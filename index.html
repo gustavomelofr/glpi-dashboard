@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLPI | Premium Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Leaflet Maps CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="zap"></i>
+                    <span>GLPI Dash</span>
+                </div>
+            </div>
+
+            <div class="sidebar-nav-group">
+                <span class="nav-group-label">Menu Principal</span>
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" id="nav-dashboard">
+                        <i data-lucide="layout-grid"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" id="nav-tickets">
+                        <i data-lucide="ticket"></i>
+                        <span>Chamados</span>
+                    </a>
+                    <a href="#" class="nav-item" id="nav-teams">
+                        <i data-lucide="users"></i>
+                        <span>Times</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Relatórios</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="sidebar-nav-group">
+                <span class="nav-group-label">Sistema</span>
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item">
+                        <i data-lucide="settings"></i>
+                        <span>Configurações</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-profile-mini">
+                    <img src="https://ui-avatars.com/api/?name=Admin+Manager&background=e0e9fe&color=135bec"
+                        alt="Avatar" class="avatar-mini">
+                    <div class="user-info-mini">
+                        <span class="name">Gustavo F.</span>
+                        <span class="role">Admin Manager</span>
+                    </div>
+                </div>
+                <div class="connection-status"
+                    style="margin-top: 16px; padding: 0 12px; font-size: 0.75rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Supabase Offline</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-title" style="display: flex; align-items: center; gap: 12px;">
+                    <button id="mobile-menu-btn" class="hamburger-menu">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <h1 id="view-title" style="font-family: 'Outfit', sans-serif;">Dashboard</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn-premium">
+                        <i data-lucide="moon" style="width: 16px;"></i>
+                        <span>Modo Escuro</span>
+                    </button>
+                    <button id="refresh-btn" class="btn-premium">
+                        <i data-lucide="refresh-cw" style="width: 16px;"></i>
+                        Atualizar dados
+                    </button>
+                    <div class="btn-premium" style="width: 40px; padding: 0; justify-content: center;">
+                        <i data-lucide="bell" style="width: 18px;"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Shared Filters -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label for="filter-tecnico">Técnico</label>
+                    <select id="filter-tecnico" class="filter-select">
+                        <option value="">Todos os Técnicos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-grupo">Grupo</label>
+                    <select id="filter-grupo" class="filter-select">
+                        <option value="">Todos os Grupos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-localidade">Localidade</label>
+                    <select id="filter-localidade" class="filter-select">
+                        <option value="">Todas as Localidades</option>
+                    </select>
+                </div>
+                <button id="clear-filters" class="btn-premium" style="height: 44px;">
+                    <i data-lucide="filter-x" style="width: 16px;"></i>
+                    Limpar
+                </button>
+            </div>
+
+            <div id="dashboard-view">
+                <!-- Critical Alerts Ticker -->
+                <div id="critical-alerts" class="glass-card"
+                    style="padding: 12px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; border-color: var(--danger); background: rgba(239, 68, 68, 0.05); display: none;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i data-lucide="alert-triangle" style="color: var(--danger);"></i>
+                        <span style="font-weight: 600; color: var(--danger);">Atenção: <span
+                                id="critical-count">0</span> Chamados Críticos em Aberto!</span>
+                    </div>
+                    <button class="btn-premium" onclick="window.dashboard.filterCritical()"
+                        style="padding: 6px 16px; font-size: 0.8rem; border-color: var(--danger); color: var(--danger);">Ver
+                        Agora</button>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <i data-lucide="layers" style="width: 14px;"></i>
+                            <span>Total de Chamados</span>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-value" id="stat-total">0</span>
+                            <span class="stat-trend trend-up">
+                                <i data-lucide="trending-up" style="width: 12px;"></i>
+                                2.5%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <i data-lucide="alert-circle" style="width: 14px;"></i>
+                            <span>Chamados Abertos</span>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-value" id="stat-open">0</span>
+                            <span class="stat-trend trend-up">
+                                <i data-lucide="trending-up" style="width: 12px;"></i>
+                                0.5%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <i data-lucide="clock" style="width: 14px;"></i>
+                            <span>Pendentes</span>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-value" id="stat-pending">0</span>
+                            <span class="stat-trend trend-down">
+                                <i data-lucide="trending-down" style="width: 12px;"></i>
+                                0.2%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <i data-lucide="check-circle-2" style="width: 14px;"></i>
+                            <span>Fechados</span>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-value" id="stat-closed">0</span>
+                            <span class="stat-trend trend-up">
+                                <i data-lucide="trending-up" style="width: 12px;"></i>
+                                0.12%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="add-data-card">
+                        <i data-lucide="plus" style="width: 24px;"></i>
+                    </div>
+                </div>
+
+                <!-- Top Grid: Charts and Leaderboard -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <!-- Cross-Data Activity Chart -->
+                    <div class="glass-card" style="margin-bottom: 0;">
+                        <div class="chart-header">
+                            <h3>Volume e Prioridade por Grupo</h3>
+                        </div>
+                        <div class="chart-container-large">
+                            <canvas id="priorityGroupChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Technician Leaderboard -->
+                    <div class="glass-card" style="margin-bottom: 0;">
+                        <div class="chart-header" style="margin-bottom: 16px;">
+                            <h3>Top Técnicos <span
+                                    style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">(Resolvidos)</span>
+                            </h3>
+                        </div>
+                        <div id="leaderboard-container"
+                            style="display: flex; flex-direction: column; gap: 12px; max-height: 350px; overflow-y: auto; padding-right: 8px;">
+                            <!-- Leaderboard items will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map View -->
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <div class="chart-header">
+                        <h3>Distribuição Geográfica de Chamados</h3>
+                        <div style="font-size: 0.8rem; color: #64748b;">Abertos vs Pendentes vs Fechados por Entidade
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                        <div id="map-container" class="glass-card-inner"
+                            style="height: 400px; border-radius: 12px; overflow: hidden; position: relative; z-index: 1;">
+                            <div id="map" style="height: 100%; width: 100%;"></div>
+                        </div>
+                        <div class="chart-container-large" style="height: 400px;">
+                            <canvas id="locationStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Grid -->
+                <div class="bottom-grid">
+                    <!-- Recent Tickets -->
+                    <div class="table-container glass-card">
+                        <div class="table-header">
+                            <h3>Chamados Recentes</h3>
+                            <div class="search-box">
+                                <i data-lucide="search" style="color: #94a3b8; width: 16px;"></i>
+                                <input type="text" id="ticket-search" placeholder="Buscar chamados...">
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table id="tickets-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Título</th>
+                                        <th>Requerente</th>
+                                        <th>Prioridade</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tickets-table-body">
+                                    <!-- Data will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-footer">
+                            <div class="pagination-info">
+                                Mostrando <span id="pg-start">0</span> - <span id="pg-end">0</span> de <span
+                                    id="pg-total">0</span>
+                            </div>
+                            <div class="pagination-controls" id="pagination-controls">
+                                <!-- Pagination buttons will be here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Breakdown -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="glass-card" style="margin-bottom: 0;">
+                            <div class="chart-header">
+                                <h3>Status Global</h3>
+                            </div>
+                            <div style="height: 250px;">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Topics Cloud -->
+                        <div class="glass-card"
+                            style="flex: 1; margin-bottom: 0; display: flex; flex-direction: column;">
+                            <div class="chart-header" style="margin-bottom: 16px;">
+                                <h3>Tópicos Frequentes</h3>
+                            </div>
+                            <div id="topics-cloud"
+                                style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; flex: 1; padding: 12px;">
+                                <!-- Tags will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Tickets View -->
+            <div id="tickets-view" style="display: none;">
+                <div class="table-container glass-card" style="margin-top: 0;">
+                    <div class="table-header">
+                        <h3>Lista Completa de Chamados</h3>
+                        <div class="search-box">
+                            <i data-lucide="search" style="color: #94a3b8; width: 16px;"></i>
+                            <input type="text" id="ticket-search-full" placeholder="Buscar chamados na lista...">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="tickets-table-full">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Título</th>
+                                    <th>Requerente</th>
+                                    <th style="width: 120px;">Técnico</th>
+                                    <th style="width: 120px;">Grupo</th>
+                                    <th style="width: 150px;">Localidade</th>
+                                    <th>Prioridade</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tickets-table-body-full">
+                                <!-- Data populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <div class="pagination-info">
+                            Mostrando <span id="pg-start-full">0</span> - <span id="pg-end-full">0</span> de <span
+                                id="pg-total-full">0</span>
+                        </div>
+                        <div class="pagination-controls" id="pagination-controls-full">
+                            <!-- Pagination buttons -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Teams View -->
+            <div id="teams-view" style="display: none;">
+                <div class="team-grid" id="teams-container">
+                    <!-- Team cards will be generated here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Team Members Modal -->
+    <div id="members-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-container glass-card">
+            <div class="modal-header">
+                <div class="header-info">
+                    <i data-lucide="users"></i>
+                    <h3 id="modal-team-name">Integrantes do Time</h3>
+                </div>
+                <button class="modal-close" onclick="dashboard.closeModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="members-list" class="members-list">
+                    <!-- Members will be listed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-premium" onclick="dashboard.closeModal()"
+                    style="width: 100%; justify-content: center;">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
