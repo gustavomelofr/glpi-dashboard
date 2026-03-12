@@ -122,6 +122,7 @@ class Dashboard {
         document.getElementById('nav-tickets').addEventListener('click', (e) => { e.preventDefault(); this.switchView('tickets'); this.closeSidebar(); });
         document.getElementById('nav-teams').addEventListener('click', (e) => { e.preventDefault(); this.switchView('teams'); this.closeSidebar(); });
         document.getElementById('nav-reports').addEventListener('click', (e) => { e.preventDefault(); this.switchView('reports'); this.closeSidebar(); });
+        document.getElementById('nav-equipamentos').addEventListener('click', (e) => { e.preventDefault(); this.switchView('equipamentos'); this.closeSidebar(); });
 
         // Mobile Sidebar Toggle
         const mobileBtn = document.getElementById('mobile-menu-btn');
@@ -133,6 +134,7 @@ class Dashboard {
 
         // Initial fetch
         await this.fetchData();
+        this.fetchEquipamentos();
 
         // Initialize Map after first fetch
         this.initMap();
@@ -144,49 +146,40 @@ class Dashboard {
 
     switchView(view) {
         this.currentView = view;
-        const dashView = document.getElementById('dashboard-view');
-        const ticketsView = document.getElementById('tickets-view');
-        const teamsView = document.getElementById('teams-view');
-        const reportsView = document.getElementById('reports-view');
-
-        const dashNav = document.getElementById('nav-dashboard');
-        const ticketsNav = document.getElementById('nav-tickets');
-        const teamsNav = document.getElementById('nav-teams');
-        const reportsNav = document.getElementById('nav-reports');
+        const views = ['dashboard-view', 'tickets-view', 'teams-view', 'reports-view', 'equipamentos-view'];
+        const navs = ['nav-dashboard', 'nav-tickets', 'nav-teams', 'nav-reports', 'nav-equipamentos'];
+        views.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        navs.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
 
         const viewTitle = document.getElementById('view-title');
-
-        // Hide all
-        dashView.style.display = 'none';
-        ticketsView.style.display = 'none';
-        teamsView.style.display = 'none';
-        reportsView.style.display = 'none';
-
-        dashNav.classList.remove('active');
-        ticketsNav.classList.remove('active');
-        teamsNav.classList.remove('active');
-        reportsNav.classList.remove('active');
+        const filterBar = document.querySelector('.filter-bar');
+        if (filterBar) filterBar.style.display = view === 'equipamentos' ? 'none' : '';
 
         if (view === 'dashboard') {
-            dashView.style.display = 'block';
-            dashNav.classList.add('active');
+            document.getElementById('dashboard-view').style.display = 'block';
+            document.getElementById('nav-dashboard').classList.add('active');
             viewTitle.innerText = 'Dashboard';
             this.renderTable();
         } else if (view === 'tickets') {
-            ticketsView.style.display = 'block';
-            ticketsNav.classList.add('active');
+            document.getElementById('tickets-view').style.display = 'block';
+            document.getElementById('nav-tickets').classList.add('active');
             viewTitle.innerText = 'Chamados';
             this.renderTable();
         } else if (view === 'teams') {
-            teamsView.style.display = 'block';
-            teamsNav.classList.add('active');
+            document.getElementById('teams-view').style.display = 'block';
+            document.getElementById('nav-teams').classList.add('active');
             viewTitle.innerText = 'Times';
             this.renderTeams();
         } else if (view === 'reports') {
-            reportsView.style.display = 'block';
-            reportsNav.classList.add('active');
+            document.getElementById('reports-view').style.display = 'block';
+            document.getElementById('nav-reports').classList.add('active');
             viewTitle.innerText = 'Relatórios';
             this.showReportsMain();
+        } else if (view === 'equipamentos') {
+            document.getElementById('equipamentos-view').style.display = 'block';
+            document.getElementById('nav-equipamentos').classList.add('active');
+            viewTitle.innerText = 'Equipamentos';
+            this.renderEquipamentos();
         }
 
         this.currentPage = 1;
@@ -196,6 +189,190 @@ class Dashboard {
         document.getElementById('reports-main-view').style.display = 'block';
         document.getElementById('reports-detail-view').style.display = 'none';
         this.renderReports();
+    }
+
+    // ─── Equipamentos ───────────────────────────────────────────────
+
+    async fetchEquipamentos() {
+        const supabaseUrl = this.config.SUPABASE_URL;
+        const supabaseKey = this.config.SUPABASE_KEY;
+        const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
+
+        try {
+            const [compRes, monRes] = await Promise.all([
+                fetch(`${this.config.SUPABASE_URL}/rest/v1/computadores_glpi?select=*&order=nome.asc`, { headers }),
+                fetch(`${this.config.SUPABASE_URL}/rest/v1/monitores_glpi?select=*&order=nome.asc`, { headers })
+            ]);
+            this.computadores = compRes.ok ? await compRes.json() : [];
+            this.monitores = monRes.ok ? await monRes.json() : [];
+        } catch (err) {
+            console.error('Erro ao buscar equipamentos:', err);
+            this.computadores = [];
+            this.monitores = [];
+        }
+
+        // Populate entidade filter with all unique values from both tables
+        const entidades = [...new Set([
+            ...(this.computadores || []).map(c => c.entidade),
+            ...(this.monitores || []).map(m => m.entidade)
+        ].filter(Boolean).sort())];
+
+        const sel = document.getElementById('eq-filter-entidade');
+        if (sel) {
+            sel.innerHTML = '<option value="">Todas as Entidades</option>';
+            entidades.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e;
+                opt.textContent = e;
+                sel.appendChild(opt);
+            });
+        }
+
+        // Update stat cards
+        const totalComp = (this.computadores || []).length;
+        const totalAtivo = (this.computadores || []).filter(c => c.ativo === true).length;
+        const totalMon = (this.monitores || []).length;
+        const elC = document.getElementById('eq-total-computadores');
+        const elA = document.getElementById('eq-ativos');
+        const elM = document.getElementById('eq-total-monitores');
+        if (elC) elC.innerText = totalComp;
+        if (elA) elA.innerText = totalAtivo;
+        if (elM) elM.innerText = totalMon;
+
+        // Pre-filtered copies
+        this.filteredComputadores = [...(this.computadores || [])];
+        this.filteredMonitores = [...(this.monitores || [])];
+
+        // Pagination state
+        this.eqPageComp = 1;
+        this.eqPageMon = 1;
+        this.eqPerPage = 15;
+    }
+
+    filterEquipamentos() {
+        const query = (document.getElementById('eq-search')?.value || '').toLowerCase();
+        const entidade = document.getElementById('eq-filter-entidade')?.value || '';
+
+        this.filteredComputadores = (this.computadores || []).filter(c => {
+            const matchQ = !query || [c.nome, c.usuario, c.modelo, c.fabricante, c.entidade, c.ip].some(f => (f || '').toLowerCase().includes(query));
+            const matchE = !entidade || c.entidade === entidade;
+            return matchQ && matchE;
+        });
+
+        this.filteredMonitores = (this.monitores || []).filter(m => {
+            const matchQ = !query || [m.nome, m.usuario, m.modelo, m.fabricante, m.entidade].some(f => (f || '').toLowerCase().includes(query));
+            const matchE = !entidade || m.entidade === entidade;
+            return matchQ && matchE;
+        });
+
+        this.eqPageComp = 1;
+        this.eqPageMon = 1;
+        this.renderEquipamentos();
+    }
+
+    switchEquipamentoTab(tab) {
+        document.getElementById('eq-panel-computadores').style.display = tab === 'computadores' ? 'block' : 'none';
+        document.getElementById('eq-panel-monitores').style.display = tab === 'monitores' ? 'block' : 'none';
+        document.getElementById('tab-computadores').classList.toggle('active', tab === 'computadores');
+        document.getElementById('tab-monitores').classList.toggle('active', tab === 'monitores');
+        this.currentEquipamentoTab = tab;
+    }
+
+    renderEquipamentos() {
+        if (!this.computadores) return; // not yet loaded
+
+        const compData = this.filteredComputadores || this.computadores;
+        const monData = this.filteredMonitores || this.monitores;
+
+        // ── Computadores table ──
+        const compBody = document.getElementById('eq-body-computadores');
+        const pgComp = document.getElementById('eq-pagination-computadores');
+        const pageC = this.eqPageComp || 1;
+        const perPage = this.eqPerPage || 15;
+        const startC = (pageC - 1) * perPage;
+        const pageDataC = compData.slice(startC, startC + perPage);
+
+        if (compBody) {
+            if (pageDataC.length === 0) {
+                compBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">Nenhum computador encontrado.</td></tr>';
+            } else {
+                compBody.innerHTML = pageDataC.map(c => {
+                    const ativo = c.ativo === true;
+                    const badge = ativo
+                        ? '<span class="eq-badge eq-badge-ativo">Ativo</span>'
+                        : '<span class="eq-badge eq-badge-inativo">Inativo</span>';
+                    return `<tr>
+                        <td><strong>${c.nome || '—'}</strong></td>
+                        <td>${c.tipo || '—'}</td>
+                        <td>${[c.fabricante, c.modelo].filter(Boolean).join(' / ') || '—'}</td>
+                        <td>${c.usuario || '—'}</td>
+                        <td style="font-size:0.8rem;">${c.entidade || '—'}</td>
+                        <td style="font-size:0.8rem;">${c.sistema_operacional || '—'}</td>
+                        <td>${badge}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        // Pagination for computadores
+        if (pgComp) {
+            const total = compData.length;
+            const pages = Math.ceil(total / perPage);
+            pgComp.innerHTML = `<span>${startC + 1}–${Math.min(startC + perPage, total)} de ${total}</span>`;
+            if (pages > 1) {
+                const prev = document.createElement('button');
+                prev.className = 'pg-btn'; prev.innerText = '←';
+                prev.disabled = pageC === 1;
+                prev.onclick = () => { this.eqPageComp--; this.renderEquipamentos(); };
+                const next = document.createElement('button');
+                next.className = 'pg-btn'; next.innerText = '→';
+                next.disabled = pageC >= pages;
+                next.onclick = () => { this.eqPageComp++; this.renderEquipamentos(); };
+                pgComp.appendChild(prev);
+                pgComp.appendChild(next);
+            }
+        }
+
+        // ── Monitores table ──
+        const monBody = document.getElementById('eq-body-monitores');
+        const pgMon = document.getElementById('eq-pagination-monitores');
+        const pageM = this.eqPageMon || 1;
+        const startM = (pageM - 1) * perPage;
+        const pageDataM = monData.slice(startM, startM + perPage);
+
+        if (monBody) {
+            if (pageDataM.length === 0) {
+                monBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:32px;">Nenhum monitor encontrado.</td></tr>';
+            } else {
+                monBody.innerHTML = pageDataM.map(m => `<tr>
+                    <td><strong>${m.nome || '—'}</strong></td>
+                    <td>${[m.fabricante, m.modelo].filter(Boolean).join(' / ') || '—'}</td>
+                    <td>${m.usuario || '—'}</td>
+                    <td style="font-size:0.8rem;">${m.entidade || '—'}</td>
+                    <td style="font-size:0.8rem;">${m.ultima_atualizacao || '—'}</td>
+                </tr>`).join('');
+            }
+        }
+
+        if (pgMon) {
+            const total = monData.length;
+            const pages = Math.ceil(total / perPage);
+            pgMon.innerHTML = `<span>${startM + 1}–${Math.min(startM + perPage, total)} de ${total}</span>`;
+            if (pages > 1) {
+                const prev = document.createElement('button');
+                prev.className = 'pg-btn'; prev.innerText = '←';
+                prev.disabled = pageM === 1;
+                prev.onclick = () => { this.eqPageMon--; this.renderEquipamentos(); };
+                const next = document.createElement('button');
+                next.className = 'pg-btn'; next.innerText = '→';
+                next.disabled = pageM >= pages;
+                next.onclick = () => { this.eqPageMon++; this.renderEquipamentos(); };
+                pgMon.appendChild(prev);
+                pgMon.appendChild(next);
+            }
+        }
+
+        lucide.createIcons({ props: { size: 14 }, nameAttr: 'data-lucide' });
     }
 
     closeSidebar() {
