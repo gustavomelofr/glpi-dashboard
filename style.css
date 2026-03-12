@@ -740,6 +740,14 @@ body.dark-mode .progress-bar {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
+/* Dark mode map styling */
+body.dark-mode .leaflet-layer,
+body.dark-mode .leaflet-control-zoom-in,
+body.dark-mode .leaflet-control-zoom-out,
+body.dark-mode .leaflet-control-attribution {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
 .modal-overlay {
     position: fixed;
     top: 0;
