@@ -53,7 +53,7 @@
                         <i data-lucide="users"></i>
                         <span>Times</span>
                     </a>
-                    <a href="#" class="nav-item">
+                    <a href="#" class="nav-item" id="nav-reports">
                         <i data-lucide="bar-chart-3"></i>
                         <span>Relatórios</span>
                     </a>
@@ -131,6 +131,19 @@
                         <option value="">Todas as Localidades</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <label for="filter-data-inicio">Início (Atualização)</label>
+                    <input type="date" id="filter-data-inicio" class="filter-select">
+                </div>
+                <div class="filter-group">
+                    <label for="filter-data-fim">Fim (Atualização)</label>
+                    <input type="date" id="filter-data-fim" class="filter-select">
+                </div>
+                <button id="apply-filters" class="btn-premium"
+                    style="height: 44px; background-color: var(--primary); color: white; border-color: var(--primary);">
+                    <i data-lucide="check" style="width: 16px;"></i>
+                    Aplicar
+                </button>
                 <button id="clear-filters" class="btn-premium" style="height: 44px;">
                     <i data-lucide="filter-x" style="width: 16px;"></i>
                     Limpar
@@ -225,7 +238,7 @@
                     <!-- Technician Leaderboard -->
                     <div class="glass-card" style="margin-bottom: 0;">
                         <div class="chart-header" style="margin-bottom: 16px;">
-                            <h3>Top Técnicos <span
+                            <h3>Ranking de Técnicos <span
                                     style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">(Resolvidos)</span>
                             </h3>
                         </div>
@@ -362,6 +375,42 @@
             <div id="teams-view" style="display: none;">
                 <div class="team-grid" id="teams-container">
                     <!-- Team cards will be generated here -->
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div id="reports-view" style="display: none;">
+                <!-- Main Reports Grid (Months) -->
+                <div id="reports-main-view">
+                    <div class="chart-header" style="margin-bottom: 24px;">
+                        <h3>Relatórios por Período</h3>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Selecione um mês para ver o
+                            detalhamento dos chamados</div>
+                    </div>
+                    <div id="reports-month-grid" class="team-grid">
+                        <!-- Month cards will be generated here -->
+                    </div>
+                </div>
+
+                <!-- Monthly Detail View -->
+                <div id="reports-detail-view" style="display: none;">
+                    <div class="glass-card" style="margin-top: 0;">
+                        <div class="chart-header"
+                            style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <h3 id="report-detail-title">Chamados de [Mês]</h3>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Listagem detalhada e
+                                    estatísticas do período</div>
+                            </div>
+                            <button class="btn-premium" onclick="window.dashboard.showReportsMain()">
+                                <i data-lucide="arrow-left" style="width: 16px;"></i>
+                                Voltar
+                            </button>
+                        </div>
+                        <div id="reports-month-content" style="display: flex; flex-direction: column; gap: 24px;">
+                            <!-- Monthly ticket list will be generated here -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

@@ -99,17 +99,29 @@ class Dashboard {
 
         // Set up event listeners
         document.getElementById('refresh-btn').addEventListener('click', () => this.fetchData());
-        document.getElementById('ticket-search').addEventListener('input', () => this.filterTickets());
-        document.getElementById('ticket-search-full').addEventListener('input', () => this.filterTickets());
-        document.getElementById('filter-tecnico').addEventListener('change', () => this.filterTickets());
-        document.getElementById('filter-grupo').addEventListener('change', () => this.filterTickets());
-        document.getElementById('filter-localidade').addEventListener('change', () => this.filterTickets());
+
+        // Remove automatic filters - trigger only via "Aplicar" button or Enter key
+        document.getElementById('ticket-search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.filterTickets();
+        });
+        document.getElementById('ticket-search-full').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.filterTickets();
+        });
+
+        document.getElementById('apply-filters').addEventListener('click', () => {
+            this.filterTickets();
+            // Scroll to top to ensure results are visible
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) mainContent.scrollTop = 0;
+        });
+
         document.getElementById('clear-filters').addEventListener('click', () => this.resetFilters());
 
         // Nav listeners
         document.getElementById('nav-dashboard').addEventListener('click', (e) => { e.preventDefault(); this.switchView('dashboard'); this.closeSidebar(); });
         document.getElementById('nav-tickets').addEventListener('click', (e) => { e.preventDefault(); this.switchView('tickets'); this.closeSidebar(); });
         document.getElementById('nav-teams').addEventListener('click', (e) => { e.preventDefault(); this.switchView('teams'); this.closeSidebar(); });
+        document.getElementById('nav-reports').addEventListener('click', (e) => { e.preventDefault(); this.switchView('reports'); this.closeSidebar(); });
 
         // Mobile Sidebar Toggle
         const mobileBtn = document.getElementById('mobile-menu-btn');
@@ -135,10 +147,12 @@ class Dashboard {
         const dashView = document.getElementById('dashboard-view');
         const ticketsView = document.getElementById('tickets-view');
         const teamsView = document.getElementById('teams-view');
+        const reportsView = document.getElementById('reports-view');
 
         const dashNav = document.getElementById('nav-dashboard');
         const ticketsNav = document.getElementById('nav-tickets');
         const teamsNav = document.getElementById('nav-teams');
+        const reportsNav = document.getElementById('nav-reports');
 
         const viewTitle = document.getElementById('view-title');
 
@@ -146,10 +160,12 @@ class Dashboard {
         dashView.style.display = 'none';
         ticketsView.style.display = 'none';
         teamsView.style.display = 'none';
+        reportsView.style.display = 'none';
 
         dashNav.classList.remove('active');
         ticketsNav.classList.remove('active');
         teamsNav.classList.remove('active');
+        reportsNav.classList.remove('active');
 
         if (view === 'dashboard') {
             dashView.style.display = 'block';
@@ -166,9 +182,20 @@ class Dashboard {
             teamsNav.classList.add('active');
             viewTitle.innerText = 'Times';
             this.renderTeams();
+        } else if (view === 'reports') {
+            reportsView.style.display = 'block';
+            reportsNav.classList.add('active');
+            viewTitle.innerText = 'Relatórios';
+            this.showReportsMain();
         }
 
         this.currentPage = 1;
+    }
+
+    showReportsMain() {
+        document.getElementById('reports-main-view').style.display = 'block';
+        document.getElementById('reports-detail-view').style.display = 'none';
+        this.renderReports();
     }
 
     closeSidebar() {
@@ -184,6 +211,141 @@ class Dashboard {
             document.body.classList.add('dark-mode');
             this.updateThemeUI();
         }
+    }
+
+    renderReports() {
+        const grid = document.getElementById('reports-month-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const monthlyData = {};
+        this.filteredTickets.forEach(ticket => {
+            const dateStr = ticket.data_atualizacao || ticket.inserido_em;
+            if (!dateStr) return;
+
+            const parts = dateStr.split(' ');
+            const dateParts = parts[0].split('-');
+            if (dateParts.length !== 3) return;
+
+            const day = dateParts[0];
+            const month = dateParts[1];
+            const yearVal = dateParts[2];
+
+            const d = new Date(`${yearVal}-${month}-${day}`);
+            if (isNaN(d.getTime())) return;
+
+            const monthName = d.toLocaleDateString('pt-BR', { month: 'long' });
+            const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+            const yearNum = d.getFullYear();
+            const monthKey = `${capitalizedMonth} ${yearNum}`;
+            const sortKey = `${yearNum}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+            if (!monthlyData[sortKey]) {
+                monthlyData[sortKey] = { label: monthKey, tickets: [] };
+            }
+            monthlyData[sortKey].tickets.push(ticket);
+        });
+
+        const sortedKeys = Object.keys(monthlyData).sort((a, b) => b.localeCompare(a));
+        this.monthlyData = monthlyData; // Store for detail access
+
+        if (sortedKeys.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">Nenhum chamado disponível para relatórios.</div>';
+            return;
+        }
+
+        sortedKeys.forEach(key => {
+            const data = monthlyData[key];
+            const card = document.createElement('div');
+            card.className = 'team-card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => this.showMonthlyDetail(key);
+
+            card.innerHTML = `
+                <div class="team-card-header">
+                    <div class="team-icon">
+                        <i data-lucide="calendar"></i>
+                    </div>
+                    <div class="team-info">
+                        <h3>${data.label}</h3>
+                        <span>${data.tickets.length} Chamados Gerenciados</span>
+                    </div>
+                </div>
+                <div class="team-stats">
+                    <div class="team-stat-item">
+                        <span>
+                            <span class="label">Volume Mensal</span>
+                        </span>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: 100%; background: var(--primary);"></div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">VER DETALHES</span>
+                        <i data-lucide="chevron-right" style="width: 16px; color: var(--primary);"></i>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        lucide.createIcons({ props: { size: 16 }, nameAttr: 'data-lucide' });
+    }
+
+    showMonthlyDetail(monthKey) {
+        const data = this.monthlyData[monthKey];
+        if (!data) return;
+
+        document.getElementById('reports-main-view').style.display = 'none';
+        document.getElementById('reports-detail-view').style.display = 'block';
+        document.getElementById('report-detail-title').innerText = `Chamados de ${data.label}`;
+
+        const container = document.getElementById('reports-month-content');
+        container.innerHTML = '';
+
+        const list = document.createElement('div');
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column';
+        list.style.gap = '8px';
+
+        data.tickets.forEach(ticket => {
+            const statusClass = this.getStatusClass(ticket.status);
+            const prioClass = this.getPrioClass(ticket.prioridade);
+
+            const item = document.createElement('div');
+            item.className = 'glass-card-inner';
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.justifyContent = 'space-between';
+            item.style.padding = '12px 16px';
+            item.style.background = 'var(--bg-main, rgba(0,0,0,0.02))';
+            item.style.borderRadius = '12px';
+            item.style.border = '1px solid var(--border-color)';
+
+            item.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">#${ticket.id}</span>
+                        <span style="font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px;" title="${ticket.titulo}">${ticket.titulo || 'Sem título'}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                        <span><i data-lucide="user" style="width: 12px; display: inline; margin-right: 4px;"></i>${ticket.requerente || 'N/A'}</span>
+                        <span><i data-lucide="map-pin" style="width: 12px; display: inline; margin-right: 4px;"></i>${ticket.entidade || 'N/A'}</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span class="${prioClass}" style="font-size: 0.75rem;">${ticket.prioridade || 'Média'}</span>
+                    <span class="status-badge ${statusClass}">${ticket.status || 'Novo'}</span>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        container.appendChild(list);
+        lucide.createIcons({ props: { size: 14 }, nameAttr: 'data-lucide' });
+
+        // Scroll to top of report
+        document.querySelector('.main-content').scrollTop = 0;
     }
 
     toggleTheme() {
@@ -268,6 +430,7 @@ class Dashboard {
 
     updateStats() {
         const total = this.filteredTickets.length;
+        console.log('Updating stats, total tickets:', total);
         const open = this.filteredTickets.filter(t => t.status?.toLowerCase().includes('aberto') || t.status?.toLowerCase().includes('novo')).length;
         const pending = this.filteredTickets.filter(t => t.status?.toLowerCase().includes('pendente') || t.status === '4').length;
         const closed = this.filteredTickets.filter(t => t.status?.toLowerCase().includes('fechado') || t.status?.toLowerCase().includes('solucionado')).length;
@@ -279,6 +442,7 @@ class Dashboard {
     }
 
     renderTable() {
+        console.log('Rendering table...');
         const tableBody = document.getElementById('tickets-table-body');
         const tableBodyFull = document.getElementById('tickets-table-body-full');
 
@@ -525,6 +689,7 @@ class Dashboard {
         this.renderLeaderboard();
         this.renderLocationStatusChart();
         this.renderTopicsCloud();
+        this.renderReports();
     }
 
     filterCritical() {
@@ -567,9 +732,15 @@ class Dashboard {
     }
 
     renderLeaderboard() {
+        console.log('Rendering leaderboard...');
         const container = document.getElementById('leaderboard-container');
-        if (!container) return;
+        if (!container) {
+            console.error('Leaderboard container not found!');
+            return;
+        }
         container.innerHTML = '';
+
+        console.log('Processing leaderboard for', this.filteredTickets.length, 'tickets');
 
         // Count resolved/closed tickets per technician
         const techCounts = {};
@@ -972,10 +1143,13 @@ class Dashboard {
         document.getElementById('filter-tecnico').value = '';
         document.getElementById('filter-grupo').value = '';
         document.getElementById('filter-localidade').value = '';
+        document.getElementById('filter-data-inicio').value = '';
+        document.getElementById('filter-data-fim').value = '';
         this.filterTickets();
     }
 
     filterTickets() {
+        console.log('Filtering tickets...');
         const queryDash = document.getElementById('ticket-search').value.toLowerCase();
         const queryFull = document.getElementById('ticket-search-full').value.toLowerCase();
         const query = this.currentView === 'dashboard' ? queryDash : queryFull;
@@ -983,6 +1157,8 @@ class Dashboard {
         const tecnico = document.getElementById('filter-tecnico').value;
         const grupo = document.getElementById('filter-grupo').value;
         const localidade = document.getElementById('filter-localidade').value;
+        const dataInicio = document.getElementById('filter-data-inicio').value;
+        const dataFim = document.getElementById('filter-data-fim').value;
 
         // Sync values between search boxes if needed (or just use one, but current layout has two)
         if (this.currentView === 'dashboard') {
@@ -996,14 +1172,35 @@ class Dashboard {
 
         this.tickets.forEach(t => {
             const matchesSearch = !query ||
-                t.titulo?.toLowerCase().includes(query) ||
-                t.requerente?.toLowerCase().includes(query);
+                (t.titulo && t.titulo.toLowerCase().includes(query)) ||
+                (t.requerente && t.requerente.toLowerCase().includes(query));
 
             const matchesTecnico = !tecnico || t.tecnico === tecnico;
             const matchesGrupo = !grupo || t.grupo === grupo;
             const matchesLocalidade = !localidade || t.entidade === localidade;
 
-            const matchesDropdowns = matchesTecnico && matchesGrupo && matchesLocalidade;
+            // Date filtering (Manual parsing for DD-MM-YYYY)
+            let matchesDate = true;
+            if (t.data_atualizacao && (dataInicio || dataFim)) {
+                try {
+                    const parts = t.data_atualizacao.split(' ');
+                    const dateParts = parts[0].split('-');
+                    if (dateParts.length === 3) {
+                        const ticketDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`; // YYYY-MM-DD
+                        if (dataInicio && ticketDate < dataInicio) matchesDate = false;
+                        if (dataFim && ticketDate > dataFim) matchesDate = false;
+                    } else {
+                        matchesDate = false;
+                    }
+                } catch (e) {
+                    console.error('Error parsing date for ticket:', t.id, t.data_atualizacao);
+                    matchesDate = false;
+                }
+            } else if ((dataInicio || dataFim) && !t.data_atualizacao) {
+                matchesDate = false;
+            }
+
+            const matchesDropdowns = matchesTecnico && matchesGrupo && matchesLocalidade && matchesDate;
 
             if (matchesDropdowns && matchesSearch) {
                 this.filteredTickets.push(t);
@@ -1015,6 +1212,7 @@ class Dashboard {
 
         this.currentPage = 1;
 
+        console.log('Filtered tickets count:', this.filteredTickets.length);
         if (this.currentView === 'dashboard' || this.currentView === 'tickets') {
             this.renderTable();
         } else if (this.currentView === 'teams') {
@@ -1024,6 +1222,13 @@ class Dashboard {
         this.updateStats();
         this.updateCharts();
         this.updateMapMarkers();
+
+        // Reset scroll after filtering to ensure user sees the update
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.scrollTop = 0;
+            console.log('Scroll reset to top after filtering');
+        }
     }
 }
 

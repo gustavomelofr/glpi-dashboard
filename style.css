@@ -247,16 +247,21 @@ body.dark-mode .btn-premium {
 
 .filter-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
     padding: 0 32px;
     margin-top: 24px;
+    margin-bottom: 32px;
     align-items: flex-end;
+    max-width: 100%;
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex: 1 1 200px;
+    /* Allow growth, allow shrinking, base width 200px */
 }
 
 .filter-group label {
@@ -272,9 +277,25 @@ body.dark-mode .btn-premium {
     background-color: white;
     color: var(--text-main);
     font-size: 0.875rem;
-    min-width: 200px;
+    width: 100%;
+    /* Take full width of group */
+    min-width: 140px;
     appearance: none;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+input[type="date"].filter-select {
+    appearance: auto;
+    /* Allow the native date picker icon to show correctly */
+    padding-right: 8px;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(19, 91, 236, 0.1);
 }
 
 body.dark-mode .filter-select {
@@ -294,6 +315,16 @@ body.dark-mode .filter-select {
 .glass-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+}
+
+.glass-card-inner {
+    transition: all 0.2s ease;
+}
+
+.glass-card-inner:hover {
+    background-color: rgba(19, 91, 236, 0.05) !important;
+    border-color: rgba(19, 91, 236, 0.2) !important;
+    transform: translateX(4px);
 }
 
 /* Stats */
