@@ -98,26 +98,37 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-header">
-                <div class="header-title" style="display: flex; align-items: center; gap: 12px;">
-                    <button id="mobile-menu-btn" class="hamburger-menu">
-                        <i data-lucide="menu"></i>
-                    </button>
-                    <h1 id="view-title" style="font-family: 'Outfit', sans-serif;">Dashboard</h1>
+                <div class="search-container">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="global-search" placeholder="Jot Something ...">
                 </div>
                 <div class="header-actions">
-                    <button id="theme-toggle" class="btn-premium">
-                        <i data-lucide="moon" style="width: 16px;"></i>
-                        <span>Modo Escuro</span>
-                    </button>
-                    <button id="refresh-btn" class="btn-premium">
-                        <i data-lucide="refresh-cw" style="width: 16px;"></i>
-                        Atualizar dados
-                    </button>
-                    <div class="btn-premium" style="width: 40px; padding: 0; justify-content: center;">
-                        <i data-lucide="bell" style="width: 18px;"></i>
+                    <div class="action-icon"><i data-lucide="message-square"></i></div>
+                    <div class="action-icon"><i data-lucide="bell"></i></div>
+                    <div class="user-profile">
+                        <img src="https://ui-avatars.com/api/?name=Wade+Warren&background=f472b6&color=fff" alt="User">
+                        <div class="user-meta">
+                            <span class="name">Wade Warren</span>
+                            <span class="role">Administration</span>
+                        </div>
+                        <i data-lucide="chevron-down"></i>
                     </div>
                 </div>
             </header>
+
+            <div class="welcome-section">
+                <div class="welcome-text">
+                    <h2 id="view-title">Welcome Back Wade!</h2>
+                    <div class="time-stamp">
+                        <i data-lucide="calendar"></i>
+                        <span id="current-time-display">16:45 | 17 June 2022</span>
+                    </div>
+                </div>
+                <div class="view-controls">
+                    <button class="ctrl-btn"><i data-lucide="chevron-left"></i></button>
+                    <button class="ctrl-btn"><i data-lucide="chevron-right"></i></button>
+                </div>
+            </div>
 
             <!-- Shared Filters -->
             <div class="filter-bar">
@@ -175,59 +186,60 @@
                 <!-- Stats Grid -->
                 <div class="stats-row">
                     <div class="stat-card">
-                        <div class="stat-card-header">
-                            <i data-lucide="layers" style="width: 14px;"></i>
-                            <span>Total de Chamados</span>
+                        <div class="stat-card-top">
+                            <div class="icon-circle purple">
+                                <i data-lucide="layers"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Total de Chamados</span>
+                                <span class="value" id="stat-total">0</span>
+                            </div>
+                            <button class="more-btn"><i data-lucide="more-vertical"></i></button>
                         </div>
-                        <div class="stat-card-body">
-                            <span class="stat-value" id="stat-total">0</span>
-                            <span class="stat-trend trend-up">
-                                <i data-lucide="trending-up" style="width: 12px;"></i>
-                                2.5%
-                            </span>
+                        <div class="stat-card-bottom">
+                            <div class="mini-chart-container">
+                                <canvas id="chart-mini-total"></canvas>
+                            </div>
+                            <span class="trend down"><i data-lucide="arrow-down"></i> 0,1%</span>
                         </div>
                     </div>
+
                     <div class="stat-card">
-                        <div class="stat-card-header">
-                            <i data-lucide="alert-circle" style="width: 14px;"></i>
-                            <span>Chamados Abertos</span>
+                        <div class="stat-card-top">
+                            <div class="icon-circle teal">
+                                <i data-lucide="alert-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Chamados Abertos</span>
+                                <span class="value" id="stat-open">0</span>
+                            </div>
+                            <button class="more-btn"><i data-lucide="more-vertical"></i></button>
                         </div>
-                        <div class="stat-card-body">
-                            <span class="stat-value" id="stat-open">0</span>
-                            <span class="stat-trend trend-up">
-                                <i data-lucide="trending-up" style="width: 12px;"></i>
-                                0.5%
-                            </span>
+                        <div class="stat-card-bottom">
+                            <div class="mini-chart-container">
+                                <canvas id="chart-mini-open"></canvas>
+                            </div>
+                            <span class="trend up"><i data-lucide="arrow-up"></i> 20%</span>
                         </div>
                     </div>
+
                     <div class="stat-card">
-                        <div class="stat-card-header">
-                            <i data-lucide="clock" style="width: 14px;"></i>
-                            <span>Pendentes</span>
+                        <div class="stat-card-top">
+                            <div class="icon-circle orange">
+                                <i data-lucide="clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Total Configuration</span>
+                                <span class="value" id="stat-pending">0</span>
+                            </div>
+                            <button class="more-btn"><i data-lucide="more-vertical"></i></button>
                         </div>
-                        <div class="stat-card-body">
-                            <span class="stat-value" id="stat-pending">0</span>
-                            <span class="stat-trend trend-down">
-                                <i data-lucide="trending-down" style="width: 12px;"></i>
-                                0.2%
-                            </span>
+                        <div class="stat-card-bottom">
+                            <div class="mini-chart-container">
+                                <canvas id="chart-mini-pending"></canvas>
+                            </div>
+                            <span class="trend neutral">= 20%</span>
                         </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <i data-lucide="check-circle-2" style="width: 14px;"></i>
-                            <span>Fechados</span>
-                        </div>
-                        <div class="stat-card-body">
-                            <span class="stat-value" id="stat-closed">0</span>
-                            <span class="stat-trend trend-up">
-                                <i data-lucide="trending-up" style="width: 12px;"></i>
-                                0.12%
-                            </span>
-                        </div>
-                    </div>
-                    <div class="add-data-card">
-                        <i data-lucide="plus" style="width: 24px;"></i>
                     </div>
                 </div>
 

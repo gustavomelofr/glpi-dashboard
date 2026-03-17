@@ -89,12 +89,13 @@ class Dashboard {
 
         // Custom color palette matching the Stitch design
         this.colors = {
-            blue: '#135bec',
-            orange: '#f97316',
-            purple: '#8b5cf6',
-            green: '#22c55e',
+            purple: '#7c4dff',
+            teal: '#2dd4bf',
+            orange: '#fb923c',
+            blue: '#3b82f6',
+            green: '#10b981',
             red: '#ef4444',
-            lightBlue: '#e0e9fe'
+            bg: '#effaf8'
         };
 
         // Set up event listeners
@@ -1057,9 +1058,44 @@ class Dashboard {
 
     updateCharts() {
         this.renderCharts(); // Base charts
+        this.renderMiniCharts(); // MIGHTY mini charts
         if (this.currentView === 'finance') {
             this.renderFinance();
         }
+    }
+
+    renderMiniCharts() {
+        const miniCharts = ['total', 'open', 'pending'];
+        miniCharts.forEach(type => {
+            const ctx = document.getElementById(`chart-mini-${type}`)?.getContext('2d');
+            if (!ctx) return;
+
+            if (this.charts[`mini-${type}`]) this.charts[`mini-${type}`].destroy();
+
+            // Randomish data for the "trend" look from inspiration
+            const data = Array.from({ length: 7 }, () => Math.floor(Math.random() * 50) + 10);
+            
+            this.charts[`mini-${type}`] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['', '', '', '', '', '', ''],
+                    datasets: [{
+                        data: data,
+                        backgroundColor: type === 'total' ? this.colors.purple : (type === 'open' ? this.colors.teal : this.colors.orange),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, beginAtZero: true }
+                    }
+                }
+            });
+        });
     }
 
     renderCharts() {
