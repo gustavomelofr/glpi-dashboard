@@ -122,6 +122,7 @@ class Dashboard {
         document.getElementById('nav-tickets').addEventListener('click', (e) => { e.preventDefault(); this.switchView('tickets'); this.closeSidebar(); });
         document.getElementById('nav-teams').addEventListener('click', (e) => { e.preventDefault(); this.switchView('teams'); this.closeSidebar(); });
         document.getElementById('nav-reports').addEventListener('click', (e) => { e.preventDefault(); this.switchView('reports'); this.closeSidebar(); });
+        document.getElementById('nav-finance').addEventListener('click', (e) => { e.preventDefault(); this.switchView('finance'); this.closeSidebar(); });
         document.getElementById('nav-equipamentos').addEventListener('click', (e) => { e.preventDefault(); this.switchView('equipamentos'); this.closeSidebar(); });
 
         // Mobile Sidebar Toggle
@@ -146,8 +147,8 @@ class Dashboard {
 
     switchView(view) {
         this.currentView = view;
-        const views = ['dashboard-view', 'tickets-view', 'teams-view', 'reports-view', 'equipamentos-view'];
-        const navs = ['nav-dashboard', 'nav-tickets', 'nav-teams', 'nav-reports', 'nav-equipamentos'];
+        const views = ['dashboard-view', 'tickets-view', 'teams-view', 'reports-view', 'finance-view', 'equipamentos-view'];
+        const navs = ['nav-dashboard', 'nav-tickets', 'nav-teams', 'nav-reports', 'nav-finance', 'nav-equipamentos'];
         views.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         navs.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
 
@@ -175,13 +176,12 @@ class Dashboard {
             document.getElementById('nav-reports').classList.add('active');
             viewTitle.innerText = 'Relatórios';
             this.showReportsMain();
-        } else if (view === 'equipamentos') {
-            document.getElementById('equipamentos-view').style.display = 'block';
-            document.getElementById('nav-equipamentos').classList.add('active');
-            viewTitle.innerText = 'Equipamentos';
-            this.renderEquipamentos();
+        } else if (view === 'finance') {
+            document.getElementById('finance-view').style.display = 'block';
+            document.getElementById('nav-finance').classList.add('active');
+            viewTitle.innerText = 'Financeiro';
+            this.renderFinance();
         }
-
         this.currentPage = 1;
     }
 
@@ -373,6 +373,202 @@ class Dashboard {
         }
 
         lucide.createIcons({ props: { size: 14 }, nameAttr: 'data-lucide' });
+    }
+
+    // ─── Finance ─────────────────────────────────────────────────────
+
+    renderFinance() {
+        const tickets = this.filteredTickets;
+        
+        // Calculate Metrics
+        const costs = tickets.map(t => parseFloat(t.custo_fixo) || 0);
+        const totalCost = costs.reduce((a, b) => a + b, 0);
+        const avgCost = totalCost / (tickets.length || 1);
+        const maxCost = costs.length > 0 ? Math.max(...costs) : 0;
+
+        document.getElementById('fin-total-cost').innerText = totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('fin-avg-cost').innerText = avgCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('fin-max-cost').innerText = maxCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        this.renderFinanceEvolutionChart();
+        this.renderFinanceEntityChart();
+        this.renderFinanceGroupChart();
+        this.renderFinanceTable();
+    }
+
+    renderFinanceEvolutionChart() {
+        const ctx = document.getElementById('financeEvolutionChart')?.getContext('2d');
+        if (!ctx) return;
+
+        // Group by month
+        const monthlyCosts = {};
+        this.filteredTickets.forEach(t => {
+            const dateStr = t.data_atualizacao || t.inserido_em;
+            if (!dateStr) return;
+
+            const parts = dateStr.split(' ');
+            const dateParts = parts[0].split('-');
+            if (dateParts.length !== 3) return;
+
+            // Handle DD-MM-YYYY format from data_atualizacao
+            const d = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`);
+            if (isNaN(d.getTime())) return;
+
+            const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+
+            if (!monthlyCosts[monthKey]) {
+                monthlyCosts[monthKey] = { label: monthLabel, total: 0 };
+            }
+            monthlyCosts[monthKey].total += parseFloat(t.custo_fixo) || 0;
+        });
+
+        const sortedKeys = Object.keys(monthlyCosts).sort();
+        const labels = sortedKeys.map(k => monthlyCosts[k].label);
+        const data = sortedKeys.map(k => monthlyCosts[k].total);
+
+        if (this.charts.financeEvolution) this.charts.financeEvolution.destroy();
+
+        this.charts.financeEvolution = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Custo Total',
+                    data: data,
+                    borderColor: this.colors.blue,
+                    backgroundColor: this.colors.blue + '22',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { callback: value => 'R$ ' + value.toLocaleString('pt-BR') }
+                    }
+                }
+            }
+        });
+    }
+
+    renderFinanceEntityChart() {
+        const ctx = document.getElementById('financeEntityChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const entities = {};
+        this.filteredTickets.forEach(t => {
+            const ent = t.entidade || 'Não informada';
+            entities[ent] = (entities[ent] || 0) + (parseFloat(t.custo_fixo) || 0);
+        });
+
+        const sortedEntities = Object.entries(entities)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+
+        if (this.charts.financeEntity) this.charts.financeEntity.destroy();
+
+        this.charts.financeEntity = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedEntities.map(e => e[0].substring(0, 15)),
+                datasets: [{
+                    label: 'Custo por Entidade',
+                    data: sortedEntities.map(e => e[1]),
+                    backgroundColor: this.colors.purple
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    renderFinanceGroupChart() {
+        const ctx = document.getElementById('financeGroupChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const groups = {};
+        this.filteredTickets.forEach(t => {
+            const g = t.grupo || 'Sem Grupo';
+            groups[g] = (groups[g] || 0) + (parseFloat(t.custo_fixo) || 0);
+        });
+
+        const sortedGroups = Object.entries(groups)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        if (this.charts.financeGroup) this.charts.financeGroup.destroy();
+
+        this.charts.financeGroup = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: sortedGroups.map(g => g[0]),
+                datasets: [{
+                    data: sortedGroups.map(g => g[1]),
+                    backgroundColor: [this.colors.blue, this.colors.orange, this.colors.green, this.colors.purple, this.colors.red],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    renderFinanceTable() {
+        const tableBody = document.getElementById('finance-table-body');
+        if (!tableBody) return;
+
+        // Reuse pagination logic pattern but for finance
+        const itemsPerPage = 10;
+        const page = this.finPage || 1;
+        const start = (page - 1) * itemsPerPage;
+        const pageData = this.filteredTickets.slice(start, start + itemsPerPage);
+
+        tableBody.innerHTML = pageData.map(t => {
+            const cost = parseFloat(t.custo_fixo) || 0;
+            return `<tr>
+                <td>#${t.id}</td>
+                <td title="${t.titulo}"><strong>${t.titulo?.substring(0, 30)}...</strong></td>
+                <td>${t.entidade || 'N/A'}</td>
+                <td>${t.grupo || 'N/A'}</td>
+                <td>${t.data_atualizacao?.split(' ')[0] || 'N/A'}</td>
+                <td style="font-weight: 700; color: var(--primary);">R$ ${cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+            </tr>`;
+        }).join('');
+
+        const total = this.filteredTickets.length;
+        document.getElementById('fin-pagination-info').innerText = `Mostrando ${start + 1} - ${Math.min(start + itemsPerPage, total)} de ${total}`;
+        
+        // Simple pagination
+        const controls = document.getElementById('fin-pagination-controls');
+        controls.innerHTML = '';
+        const pages = Math.ceil(total / itemsPerPage);
+        if (pages > 1) {
+            const prev = document.createElement('button');
+            prev.className = 'pg-btn'; prev.innerHTML = '<i data-lucide="chevron-left"></i>';
+            prev.disabled = page === 1;
+            prev.onclick = () => { this.finPage = page - 1; this.renderFinanceTable(); };
+            
+            const next = document.createElement('button');
+            next.className = 'pg-btn'; next.innerHTML = '<i data-lucide="chevron-right"></i>';
+            next.disabled = page >= pages;
+            next.onclick = () => { this.finPage = page + 1; this.renderFinanceTable(); };
+            
+            controls.appendChild(prev);
+            controls.appendChild(next);
+            lucide.createIcons({ props: { size: 14 }, nameAttr: 'data-lucide' });
+        }
     }
 
     closeSidebar() {
@@ -860,6 +1056,13 @@ class Dashboard {
     }
 
     updateCharts() {
+        this.renderCharts(); // Base charts
+        if (this.currentView === 'finance') {
+            this.renderFinance();
+        }
+    }
+
+    renderCharts() {
         this.renderCriticalAlerts();
         this.renderStatusChart();
         this.renderPriorityGroupChart();
@@ -1394,6 +1597,8 @@ class Dashboard {
             this.renderTable();
         } else if (this.currentView === 'teams') {
             this.renderTeams();
+        } else if (this.currentView === 'finance') {
+            this.renderFinance();
         }
 
         this.updateStats();

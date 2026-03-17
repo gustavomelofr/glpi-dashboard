@@ -57,6 +57,10 @@
                         <i data-lucide="bar-chart-3"></i>
                         <span>Relatórios</span>
                     </a>
+                    <a href="#" class="nav-item" id="nav-finance">
+                        <i data-lucide="dollar-sign"></i>
+                        <span>Finanças</span>
+                    </a>
                     <a href="#" class="nav-item" id="nav-equipamentos">
                         <i data-lucide="monitor"></i>
                         <span>Equipamentos</span>
@@ -420,108 +424,101 @@
 
             <!-- Equipamentos View -->
             <div id="equipamentos-view" style="display: none; padding: 32px;">
+                <!-- ... existing equipamentos content ... -->
+            </div>
+
+            <!-- Finance View -->
+            <div id="finance-view" style="display: none; padding: 32px;">
                 <!-- Stat Cards -->
                 <div class="stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 28px;">
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <i data-lucide="monitor" style="width:16px;"></i>
-                            Total Computadores
+                            <i data-lucide="dollar-sign" style="width:16px;"></i>
+                            Custo Total
                         </div>
                         <div class="stat-card-body">
-                            <div class="stat-value" id="eq-total-computadores">—</div>
+                            <div class="stat-value" id="fin-total-cost">R$ 0,00</div>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <i data-lucide="check-circle" style="width:16px;color:var(--success)"></i>
-                            Computadores Ativos
+                            <i data-lucide="trending-up" style="width:16px;"></i>
+                            Custo Médio/Chamado
                         </div>
                         <div class="stat-card-body">
-                            <div class="stat-value" style="color:var(--success)" id="eq-ativos">—</div>
+                            <div class="stat-value" id="fin-avg-cost">R$ 0,00</div>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <i data-lucide="tv-2" style="width:16px;"></i>
-                            Total Monitores
+                            <i data-lucide="arrow-up-right" style="width:16px;"></i>
+                            Maior Custo Unitário
                         </div>
                         <div class="stat-card-body">
-                            <div class="stat-value" id="eq-total-monitores">—</div>
+                            <div class="stat-value" id="fin-max-cost">R$ 0,00</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Card -->
-                <div class="glass-card" style="margin-top: 0;">
-                    <!-- Tabs + Search Row -->
-                    <div
-                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-                        <div class="eq-tabs">
-                            <button class="eq-tab active" id="tab-computadores"
-                                onclick="window.dashboard.switchEquipamentoTab('computadores')">
-                                <i data-lucide="monitor" style="width:14px;"></i> Computadores
-                            </button>
-                            <button class="eq-tab" id="tab-monitores"
-                                onclick="window.dashboard.switchEquipamentoTab('monitores')">
-                                <i data-lucide="tv-2" style="width:14px;"></i> Monitores
-                            </button>
+                <!-- Charts Row 1: Evolution -->
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <div class="chart-header">
+                        <h3>Evolução de Custos por Período</h3>
+                    </div>
+                    <div style="height: 350px;">
+                        <canvas id="financeEvolutionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2: Distribution -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div class="glass-card" style="margin-bottom: 0;">
+                        <div class="chart-header">
+                            <h3>Custo por Entidade (Top 10)</h3>
                         </div>
-                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            <div class="search-box">
-                                <i data-lucide="search" style="width:14px; color:var(--text-muted);"></i>
-                                <input type="text" id="eq-search" placeholder="Buscar equipamento..."
-                                    oninput="window.dashboard.filterEquipamentos()">
-                            </div>
-                            <select id="eq-filter-entidade" class="filter-select" style="min-width:160px;"
-                                onchange="window.dashboard.filterEquipamentos()">
-                                <option value="">Todas as Entidades</option>
-                            </select>
+                        <div style="height: 300px;">
+                            <canvas id="financeEntityChart"></canvas>
                         </div>
                     </div>
-
-                    <!-- Tables -->
-                    <div id="eq-panel-computadores" class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Tipo</th>
-                                    <th>Fabricante / Modelo</th>
-                                    <th>Usuário</th>
-                                    <th>Entidade</th>
-                                    <th>SO</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="eq-body-computadores">
-                                <tr>
-                                    <td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px;">
-                                        Carregando...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div id="eq-pagination-computadores" class="table-footer"></div>
+                    <div class="glass-card" style="margin-bottom: 0;">
+                        <div class="chart-header">
+                            <h3>Custo por Grupo</h3>
+                        </div>
+                        <div style="height: 300px;">
+                            <canvas id="financeGroupChart"></canvas>
+                        </div>
                     </div>
+                </div>
 
-                    <div id="eq-panel-monitores" class="table-responsive" style="display:none;">
-                        <table>
+                <!-- Detail Table -->
+                <div class="table-container glass-card" style="margin-top: 0;">
+                    <div class="table-header">
+                        <h3>Detalhamento de Custos</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="finance-table">
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
-                                    <th>Fabricante / Modelo</th>
-                                    <th>Usuário</th>
+                                    <th>ID</th>
+                                    <th>Título</th>
                                     <th>Entidade</th>
-                                    <th>Atualizado em</th>
+                                    <th>Grupo</th>
+                                    <th>Data</th>
+                                    <th>Custo (R$)</th>
                                 </tr>
                             </thead>
-                            <tbody id="eq-body-monitores">
-                                <tr>
-                                    <td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">
-                                        Carregando...</td>
-                                </tr>
+                            <tbody id="finance-table-body">
+                                <!-- Data will be populated here -->
                             </tbody>
                         </table>
-                        <div id="eq-pagination-monitores" class="table-footer"></div>
+                    </div>
+                    <div class="table-footer">
+                        <div class="pagination-info" id="fin-pagination-info">
+                            Mostrando 0 - 0 de 0
+                        </div>
+                        <div class="pagination-controls" id="fin-pagination-controls">
+                            <!-- Pagination buttons -->
+                        </div>
                     </div>
                 </div>
             </div>
