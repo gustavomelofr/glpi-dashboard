@@ -155,10 +155,30 @@ class Dashboard {
 
         // Initial fetch
         await this.fetchData();
-        this.fetchEquipamentos();
+        await this.fetchEquipamentos();
 
         // Initialize Map after first fetch
         this.initMap();
+        
+        // Hide loader after all initial data is ready
+        this.hideLoader();
+    }
+
+    hideLoader() {
+        const loader = document.getElementById('loader-wrapper');
+        if (loader) {
+            // Apply a slight delay to ensure smooth transition and give a "premium" feel
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+                // Remove from DOM after transition to avoid any interaction issues
+                setTimeout(() => {
+                    if (loader.parentNode) {
+                        loader.remove();
+                    }
+                }, 500);
+            }, 800); 
+        }
     }
 
     switchView(view) {
