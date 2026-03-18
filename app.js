@@ -720,6 +720,53 @@ class Dashboard {
         const container = document.getElementById('reports-month-content');
         container.innerHTML = '';
 
+        // Calculate Monthly Finances
+        const totalCost = data.tickets.reduce((sum, t) => sum + (parseFloat(t.custo_fixo) || 0), 0);
+        const avgCost = totalCost / (data.tickets.length || 1);
+        const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Add Financial Summary Header
+        const summaryCard = document.createElement('div');
+        summaryCard.className = 'glass-card';
+        summaryCard.style.padding = '24px';
+        summaryCard.style.marginBottom = '24px';
+        summaryCard.style.background = 'linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%)';
+        summaryCard.style.color = 'white';
+        summaryCard.style.border = 'none';
+
+        summaryCard.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button onclick="dashboard.switchView('relatorios')" class="action-icon" style="background: rgba(255,255,255,0.2); color: white; border: none; width: 32px; height: 32px;">
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                    <div>
+                        <span style="font-size: 0.8rem; opacity: 0.8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Relatório de Atividades</span>
+                        <h2 style="font-size: 1.8rem; margin: 0;">${data.label}</h2>
+                    </div>
+                </div>
+                <button onclick="dashboard.downloadPDF('${monthKey}')" class="glass-card" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <i data-lucide="file-down"></i>
+                    Baixar PDF
+                </button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+                <div>
+                    <span style="font-size: 0.8rem; opacity: 0.8; font-weight: 500; text-transform: uppercase;">Investimento Total</span>
+                    <h2 style="font-size: 1.8rem; margin-top: 4px;">${formatter.format(totalCost)}</h2>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; opacity: 0.8; font-weight: 500; text-transform: uppercase;">Ticket Médio</span>
+                    <h3 style="font-size: 1.4rem; margin-top: 4px;">${formatter.format(avgCost)}</h3>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; opacity: 0.8; font-weight: 500; text-transform: uppercase;">Volume de Chamados</span>
+                    <h3 style="font-size: 1.4rem; margin-top: 4px;">${data.tickets.length}</h3>
+                </div>
+            </div>
+        `;
+        container.appendChild(summaryCard);
+
         const list = document.createElement('div');
         list.style.display = 'flex';
         list.style.flexDirection = 'column';
@@ -728,6 +775,7 @@ class Dashboard {
         data.tickets.forEach(ticket => {
             const statusClass = this.getStatusClass(ticket.status);
             const prioClass = this.getPrioClass(ticket.prioridade);
+            const cost = parseFloat(ticket.custo_fixo) || 0;
 
             const item = document.createElement('div');
             item.className = 'glass-card-inner';
@@ -751,6 +799,7 @@ class Dashboard {
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 16px;">
+                    ${cost > 0 ? `<span style="font-weight: 700; color: var(--secondary); font-size: 0.85rem; background: rgba(45, 212, 191, 0.1); padding: 4px 8px; border-radius: 6px;">${formatter.format(cost)}</span>` : ''}
                     <span class="${prioClass}" style="font-size: 0.75rem;">${ticket.prioridade || 'Média'}</span>
                     <span class="status-badge ${statusClass}">${ticket.status || 'Novo'}</span>
                 </div>
@@ -763,6 +812,85 @@ class Dashboard {
 
         // Scroll to top of report
         document.querySelector('.main-content').scrollTop = 0;
+    }
+
+    downloadPDF(monthKey) {
+        const data = this.monthlyData[monthKey];
+        if (!data) return;
+
+        // Use window.jspdf if using UMD
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Total Cost Calculation
+        const totalCost = data.tickets.reduce((sum, t) => sum + (parseFloat(t.custo_fixo) || 0), 0);
+        const avgCost = totalCost / (data.tickets.length || 1);
+
+        // PDF Header
+        doc.setFontSize(22);
+        doc.setTextColor(40);
+        doc.text("Relatório de Chamados - SEDES", 14, 22);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(100);
+        doc.text(`Período: ${data.label}`, 14, 32);
+        doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 38);
+
+        // Summary Box
+        doc.setDrawColor(200);
+        doc.setFillColor(245, 247, 250);
+        doc.rect(14, 45, 182, 25, 'F');
+        
+        doc.setFontSize(10);
+        doc.setTextColor(120);
+        doc.text("INVESTIMENTO TOTAL", 20, 52);
+        doc.text("TICKET MÉDIO", 80, 52);
+        doc.text("TOTAL DE CHAMADOS", 140, 52);
+
+        doc.setFontSize(14);
+        doc.setTextColor(40);
+        doc.text(formatter.format(totalCost), 20, 62);
+        doc.text(formatter.format(avgCost), 80, 62);
+        doc.text(data.tickets.length.toString(), 140, 62);
+
+        // Table Data
+        const tableRows = data.tickets.map(t => [
+            `#${t.id}`,
+            t.titulo || 'Sem título',
+            t.requerente || 'N/A',
+            t.entidade || 'N/A',
+            t.prioridade || 'Média',
+            t.status || 'Novo',
+            formatter.format(parseFloat(t.custo_fixo) || 0)
+        ]);
+
+        doc.autoTable({
+            startY: 80,
+            head: [['ID', 'Título', 'Requerente', 'Entidade', 'Prioridade', 'Status', 'Custo']],
+            body: tableRows,
+            headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            margin: { top: 80 },
+            styles: { fontSize: 8, cellPadding: 3 },
+            columnStyles: {
+                0: { cellWidth: 15 },
+                1: { cellWidth: 'auto' },
+                6: { halign: 'right', cellWidth: 25 }
+            }
+        });
+
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            const pageWidth = doc.internal.pageSize.getWidth();
+            doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+        }
+
+        doc.save(`Relatorio_Chamados_${data.label.replace(' ', '_')}.pdf`);
     }
 
     toggleTheme() {
