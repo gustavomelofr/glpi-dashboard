@@ -98,18 +98,33 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-header">
+                <div class="mobile-menu-btn" id="mobile-menu-btn" style="display: none; cursor: pointer; margin-right: 16px;">
+                    <i data-lucide="menu"></i>
+                </div>
                 <div class="search-container">
                     <i data-lucide="search"></i>
-                    <input type="text" id="global-search" placeholder="Jot Something ...">
+                    <input type="text" id="ticket-search" placeholder="Buscar chamados, equipamentos...">
                 </div>
                 <div class="header-actions">
-                    <div class="action-icon"><i data-lucide="message-square"></i></div>
-                    <div class="action-icon"><i data-lucide="bell"></i></div>
+                    <button class="action-icon" id="refresh-btn" title="Atualizar Dados">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                    <button class="action-icon" id="theme-toggle" title="Alternar Tema">
+                        <i data-lucide="sun"></i>
+                    </button>
+                    <div class="action-icon">
+                        <i data-lucide="message-square"></i>
+                        <span class="status-badge-header"></span>
+                    </div>
+                    <div class="action-icon">
+                        <i data-lucide="bell"></i>
+                        <span class="status-badge-header"></span>
+                    </div>
                     <div class="user-profile">
                         <img src="https://ui-avatars.com/api/?name=Wade+Warren&background=f472b6&color=fff" alt="User">
                         <div class="user-meta">
                             <span class="name">Wade Warren</span>
-                            <span class="role">Administration</span>
+                            <span class="role">Administrador</span>
                         </div>
                         <i data-lucide="chevron-down"></i>
                     </div>
@@ -133,29 +148,24 @@
             <!-- Shared Filters -->
             <div class="filter-bar">
                 <div class="filter-group">
-                    <label for="filter-tecnico">Técnico</label>
                     <select id="filter-tecnico" class="filter-select">
-                        <option value="">Todos os Técnicos</option>
+                        <option value="">Técnico</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="filter-grupo">Grupo</label>
                     <select id="filter-grupo" class="filter-select">
-                        <option value="">Todos os Grupos</option>
+                        <option value="">Grupo</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="filter-localidade">Localidade</label>
                     <select id="filter-localidade" class="filter-select">
-                        <option value="">Todas as Localidades</option>
+                        <option value="">Localidade</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="filter-data-inicio">Início (Atualização)</label>
                     <input type="date" id="filter-data-inicio" class="filter-select">
                 </div>
                 <div class="filter-group">
-                    <label for="filter-data-fim">Fim (Atualização)</label>
                     <input type="date" id="filter-data-fim" class="filter-select">
                 </div>
                 <button id="apply-filters" class="btn-premium"
@@ -229,7 +239,7 @@
                                 <i data-lucide="clock"></i>
                             </div>
                             <div class="stat-info">
-                                <span class="label">Total Configuration</span>
+                                <span class="label">Chamados Pendentes</span>
                                 <span class="value" id="stat-pending">0</span>
                             </div>
                             <button class="more-btn"><i data-lucide="more-vertical"></i></button>
@@ -238,7 +248,26 @@
                             <div class="mini-chart-container">
                                 <canvas id="chart-mini-pending"></canvas>
                             </div>
-                            <span class="trend neutral">= 20%</span>
+                            <span class="trend neutral">= 0%</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="icon-circle green">
+                                <i data-lucide="check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Chamados Fechados</span>
+                                <span class="value" id="stat-closed">0</span>
+                            </div>
+                            <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+                        </div>
+                        <div class="stat-card-bottom">
+                            <div class="mini-chart-container">
+                                <canvas id="chart-mini-closed"></canvas>
+                            </div>
+                            <span class="trend up"><i data-lucide="arrow-up"></i> 0%</span>
                         </div>
                     </div>
                 </div>
@@ -436,7 +465,92 @@
 
             <!-- Equipamentos View -->
             <div id="equipamentos-view" style="display: none; padding: 32px;">
-                <!-- ... existing equipamentos content ... -->
+                <div class="stats-row" style="margin-bottom: 28px;">
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="icon-circle purple">
+                                <i data-lucide="monitor"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Computadores</span>
+                                <span class="value" id="eq-total-computadores">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="icon-circle green">
+                                <i data-lucide="check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Ativos</span>
+                                <span class="value" id="eq-ativos">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="icon-circle blue">
+                                <i data-lucide="screen-share"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="label">Monitores</span>
+                                <span class="value" id="eq-total-monitores">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="margin-top: 24px;">
+                    <div class="table-header">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <h3>Inventário de Equipamentos</h3>
+                            <select id="eq-filter-entidade" class="filter-select" style="margin: 0;">
+                                <option value="">Todas as Entidades</option>
+                            </select>
+                        </div>
+                        <div class="tab-controls">
+                            <button id="tab-computadores" class="active" onclick="window.dashboard.switchEquipamentoTab('computadores')">Computadores</button>
+                            <button id="tab-monitores" onclick="window.dashboard.switchEquipamentoTab('monitores')">Monitores</button>
+                        </div>
+                    </div>
+
+                    <!-- Computadores Panel -->
+                    <div id="eq-panel-computadores" class="table-responsive">
+                        <table class="premium-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Marca/Modelo</th>
+                                    <th>Usuário</th>
+                                    <th>Setor/Entidade</th>
+                                    <th>S.O.</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eq-body-computadores"></tbody>
+                        </table>
+                        <div id="eq-pagination-computadores" class="pagination-footer"></div>
+                    </div>
+
+                    <!-- Monitores Panel -->
+                    <div id="eq-panel-monitores" class="table-responsive" style="display: none;">
+                        <table class="premium-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Marca/Modelo</th>
+                                    <th>Usuário</th>
+                                    <th>Setor/Entidade</th>
+                                    <th>Atualização</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eq-body-monitores"></tbody>
+                        </table>
+                        <div id="eq-pagination-monitores" class="pagination-footer"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Finance View -->
@@ -565,7 +679,7 @@
 
     <!-- Scripts -->
     <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=1.2"></script>
 </body>
 
 </html>

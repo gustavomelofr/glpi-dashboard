@@ -99,40 +99,55 @@ class Dashboard {
         };
 
         // Set up event listeners
-        document.getElementById('refresh-btn').addEventListener('click', () => this.fetchData());
+        const addListener = (id, event, callback) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, callback);
+        };
 
-        // Remove automatic filters - trigger only via "Aplicar" button or Enter key
-        document.getElementById('ticket-search').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.filterTickets();
-        });
-        document.getElementById('ticket-search-full').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.filterTickets();
-        });
+        addListener('refresh-btn', 'click', () => this.fetchData());
 
-        document.getElementById('apply-filters').addEventListener('click', () => {
+        const search = document.getElementById('ticket-search');
+        if (search) {
+            search.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.filterTickets();
+            });
+        }
+
+        const searchFull = document.getElementById('ticket-search-full');
+        if (searchFull) {
+            searchFull.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.filterTickets();
+            });
+        }
+
+        addListener('apply-filters', 'click', () => {
             this.filterTickets();
-            // Scroll to top to ensure results are visible
             const mainContent = document.querySelector('.main-content');
             if (mainContent) mainContent.scrollTop = 0;
         });
 
-        document.getElementById('clear-filters').addEventListener('click', () => this.resetFilters());
+        addListener('clear-filters', 'click', () => this.resetFilters());
 
         // Nav listeners
-        document.getElementById('nav-dashboard').addEventListener('click', (e) => { e.preventDefault(); this.switchView('dashboard'); this.closeSidebar(); });
-        document.getElementById('nav-tickets').addEventListener('click', (e) => { e.preventDefault(); this.switchView('tickets'); this.closeSidebar(); });
-        document.getElementById('nav-teams').addEventListener('click', (e) => { e.preventDefault(); this.switchView('teams'); this.closeSidebar(); });
-        document.getElementById('nav-reports').addEventListener('click', (e) => { e.preventDefault(); this.switchView('reports'); this.closeSidebar(); });
-        document.getElementById('nav-finance').addEventListener('click', (e) => { e.preventDefault(); this.switchView('finance'); this.closeSidebar(); });
-        document.getElementById('nav-equipamentos').addEventListener('click', (e) => { e.preventDefault(); this.switchView('equipamentos'); this.closeSidebar(); });
+        addListener('nav-dashboard', 'click', (e) => { e.preventDefault(); this.switchView('dashboard'); this.closeSidebar(); });
+        addListener('nav-tickets', 'click', (e) => { e.preventDefault(); this.switchView('tickets'); this.closeSidebar(); });
+        addListener('nav-teams', 'click', (e) => { e.preventDefault(); this.switchView('teams'); this.closeSidebar(); });
+        addListener('nav-reports', 'click', (e) => { e.preventDefault(); this.switchView('reports'); this.closeSidebar(); });
+        addListener('nav-finance', 'click', (e) => { e.preventDefault(); this.switchView('finance'); this.closeSidebar(); });
+        addListener('nav-equipamentos', 'click', (e) => { e.preventDefault(); this.switchView('equipamentos'); this.closeSidebar(); });
 
         // Mobile Sidebar Toggle
         const mobileBtn = document.getElementById('mobile-menu-btn');
         if (mobileBtn) {
             mobileBtn.addEventListener('click', () => {
-                document.querySelector('.sidebar').classList.toggle('open');
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.classList.toggle('open');
             });
         }
+
+        // Theme Setup
+        this.initTheme();
+        addListener('theme-toggle', 'click', () => this.toggleTheme());
 
         // Initial fetch
         await this.fetchData();
@@ -140,10 +155,6 @@ class Dashboard {
 
         // Initialize Map after first fetch
         this.initMap();
-
-        // Theme Setup
-        this.initTheme();
-        document.getElementById('theme-toggle').addEventListener('click', () => this.toggleTheme());
     }
 
     switchView(view) {
@@ -182,6 +193,11 @@ class Dashboard {
             document.getElementById('nav-finance').classList.add('active');
             viewTitle.innerText = 'Financeiro';
             this.renderFinance();
+        } else if (view === 'equipamentos') {
+            document.getElementById('equipamentos-view').style.display = 'block';
+            document.getElementById('nav-equipamentos').classList.add('active');
+            viewTitle.innerText = 'Equipamentos';
+            this.renderEquipamentos();
         }
         this.currentPage = 1;
     }
@@ -387,9 +403,13 @@ class Dashboard {
         const avgCost = totalCost / (tickets.length || 1);
         const maxCost = costs.length > 0 ? Math.max(...costs) : 0;
 
-        document.getElementById('fin-total-cost').innerText = totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        document.getElementById('fin-avg-cost').innerText = avgCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        document.getElementById('fin-max-cost').innerText = maxCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const elTotalCost = document.getElementById('fin-total-cost');
+        const elAvgCost = document.getElementById('fin-avg-cost');
+        const elMaxCost = document.getElementById('fin-max-cost');
+
+        if (elTotalCost) elTotalCost.innerText = totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (elAvgCost) elAvgCost.innerText = avgCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (elMaxCost) elMaxCost.innerText = maxCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         this.renderFinanceEvolutionChart();
         this.renderFinanceEntityChart();
@@ -735,14 +755,20 @@ class Dashboard {
     updateThemeUI() {
         const btn = document.getElementById('theme-toggle');
         const isDark = document.body.classList.contains('dark-mode');
-        btn.innerHTML = isDark ?
-            '<i data-lucide="sun" style="width: 16px;"></i><span>Modo Claro</span>' :
-            '<i data-lucide="moon" style="width: 16px;"></i><span>Modo Escuro</span>';
+        
+        if (btn) {
+            btn.innerHTML = isDark ?
+                '<i data-lucide="sun"></i>' :
+                '<i data-lucide="moon"></i>';
+        }
+        
         lucide.createIcons();
 
-        // Update Chart defaults
-        Chart.defaults.color = isDark ? '#94a3b8' : '#64748b';
-        Chart.defaults.borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+        // Update Chart defaults for theme
+        if (typeof Chart !== 'undefined') {
+            Chart.defaults.color = isDark ? '#94a3b8' : '#64748b';
+            Chart.defaults.borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+        }
     }
 
     async fetchData() {
@@ -752,6 +778,8 @@ class Dashboard {
         try {
             statusText.innerText = 'Sincronizando...';
             statusDot.className = 'status-dot';
+            console.log('Fetching data from:', this.config.SUPABASE_URL);
+            console.log('Table name:', this.config.TABLE_NAME);
 
             // Fetch all from Supabase via PostgREST using pagination to bypass 1000 limit
             let allData = [];
@@ -766,14 +794,22 @@ class Dashboard {
                     }
                 });
 
-                if (!response.ok) throw new Error('Falha ao buscar dados do Supabase');
+                if (!response.ok) {
+                    console.error('Response not OK:', response.status, response.statusText);
+                    const errorText = await response.text();
+                    console.error('Error details:', errorText);
+                    throw new Error('Falha ao buscar dados do Supabase');
+                }
 
                 const data = await response.json();
+                console.log(`Fetched ${data.length} records in this batch.`);
                 allData = allData.concat(data);
 
                 if (data.length < limit) break; // Finished loading
                 offset += limit;
             }
+
+            console.log('Total tickets fetched:', allData.length);
 
             this.tickets = allData;
             this.filteredTickets = [...this.tickets];
@@ -804,15 +840,25 @@ class Dashboard {
 
     updateStats() {
         const total = this.filteredTickets.length;
-        console.log('Updating stats, total tickets:', total);
+        console.log('--- updateStats called ---', total);
+        
+        if (total === 0 && this.tickets.length > 0) {
+            console.warn('WARNING: filteredTickets is 0 but tickets is not! Why?');
+        }
+
         const open = this.filteredTickets.filter(t => t.status?.toLowerCase().includes('aberto') || t.status?.toLowerCase().includes('novo')).length;
         const pending = this.filteredTickets.filter(t => t.status?.toLowerCase().includes('pendente') || t.status === '4').length;
         const closed = this.filteredTickets.filter(t => t.status?.toLowerCase().includes('fechado') || t.status?.toLowerCase().includes('solucionado')).length;
 
-        document.getElementById('stat-total').innerText = total;
-        document.getElementById('stat-open').innerText = open;
-        document.getElementById('stat-pending').innerText = pending;
-        document.getElementById('stat-closed').innerText = closed;
+        const elTotal = document.getElementById('stat-total');
+        const elOpen = document.getElementById('stat-open');
+        const elPending = document.getElementById('stat-pending');
+        const elClosed = document.getElementById('stat-closed');
+
+        if (elTotal) elTotal.innerText = total;
+        if (elOpen) elOpen.innerText = open;
+        if (elPending) elPending.innerText = pending;
+        if (elClosed) elClosed.innerText = closed;
     }
 
     renderTable() {
@@ -1065,7 +1111,7 @@ class Dashboard {
     }
 
     renderMiniCharts() {
-        const miniCharts = ['total', 'open', 'pending'];
+        const miniCharts = ['total', 'open', 'pending', 'closed'];
         miniCharts.forEach(type => {
             const ctx = document.getElementById(`chart-mini-${type}`)?.getContext('2d');
             if (!ctx) return;
@@ -1081,7 +1127,9 @@ class Dashboard {
                     labels: ['', '', '', '', '', '', ''],
                     datasets: [{
                         data: data,
-                        backgroundColor: type === 'total' ? this.colors.purple : (type === 'open' ? this.colors.teal : this.colors.orange),
+                        backgroundColor: type === 'total' ? this.colors.purple : 
+                                        (type === 'open' ? this.colors.teal : 
+                                        (type === 'pending' ? this.colors.orange : this.colors.green)),
                         borderRadius: 4
                     }]
                 },
@@ -1100,10 +1148,10 @@ class Dashboard {
 
     renderCharts() {
         this.renderCriticalAlerts();
-        this.renderStatusChart();
-        this.renderPriorityGroupChart();
+        try { this.renderStatusChart(); } catch(e) { console.error(e); }
+        try { this.renderPriorityGroupChart(); } catch(e) { console.error(e); }
         this.renderLeaderboard();
-        this.renderLocationStatusChart();
+        try { this.renderLocationStatusChart(); } catch(e) { console.error(e); }
         this.renderTopicsCloud();
         this.renderReports();
     }
@@ -1390,8 +1438,9 @@ class Dashboard {
     }
 
     renderStatusChart() {
-        // ... (existing code handles this well)
-        const ctx = document.getElementById('statusChart').getContext('2d');
+        const el = document.getElementById('statusChart');
+        if (!el) return;
+        const ctx = el.getContext('2d');
 
         // Count statuses
         const counts = {};
