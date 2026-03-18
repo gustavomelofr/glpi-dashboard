@@ -149,6 +149,10 @@ class Dashboard {
         this.initTheme();
         addListener('theme-toggle', 'click', () => this.toggleTheme());
 
+        // Sidebar Setup
+        this.initSidebar();
+        addListener('sidebar-toggle', 'click', () => this.toggleSidebar());
+
         // Initial fetch
         await this.fetchData();
         this.fetchEquipamentos();
@@ -604,6 +608,25 @@ class Dashboard {
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
             this.updateThemeUI();
+        }
+    }
+
+    initSidebar() {
+        const isMinimized = localStorage.getItem('sidebar-minimized') === 'true';
+        if (isMinimized) {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.classList.add('minimized');
+        }
+    }
+
+    toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            const isMinimized = sidebar.classList.toggle('minimized');
+            localStorage.setItem('sidebar-minimized', isMinimized);
+            
+            // Trigger window resize to help Chart.js and other layout-dependent components
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
         }
     }
 

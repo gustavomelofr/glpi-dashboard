@@ -77,13 +77,25 @@ h6 {
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     position: relative;
     z-index: 100;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease;
+}
+
+.sidebar.minimized {
+    width: 80px;
+    padding: 32px 0;
 }
 
 .sidebar-header {
     padding: 24px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+}
+
+.sidebar.minimized .sidebar-header {
+    justify-content: center;
+    padding: 24px 0;
 }
 
 .logo {
@@ -135,6 +147,47 @@ h6 {
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-right: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar.minimized .nav-item {
+    justify-content: center;
+    padding: 14px 0;
+    margin-right: 0;
+    border-radius: 12px;
+    margin: 0 10px;
+}
+
+.sidebar.minimized .logo span,
+.sidebar.minimized .nav-item span,
+.sidebar.minimized .nav-group-label,
+.sidebar.minimized .user-info-mini,
+.sidebar.minimized .connection-status span:not(.status-dot),
+.sidebar.minimized .user-meta {
+    display: none;
+}
+
+.sidebar-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar.minimized #sidebar-toggle i {
+    transform: rotate(180deg);
 }
 
 .nav-item i {
