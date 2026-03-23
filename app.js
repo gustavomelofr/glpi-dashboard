@@ -235,21 +235,17 @@ class Dashboard {
     // ─── Equipamentos ───────────────────────────────────────────────
 
     async fetchEquipamentos() {
-        const supabaseUrl = this.config.SUPABASE_URL;
-        const supabaseKey = this.config.SUPABASE_KEY;
-        const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
-
         try {
-            const [compRes, monRes] = await Promise.all([
-                fetch(`${this.config.SUPABASE_URL}/rest/v1/computadores_glpi?select=*&order=nome.asc`, { headers }),
-                fetch(`${this.config.SUPABASE_URL}/rest/v1/monitores_glpi?select=*&order=nome.asc`, { headers })
+            const [computadores, monitores] = await Promise.all([
+                this.fetchAll('computadores_glpi', '*', 'nome.asc'),
+                this.fetchAll('monitores_glpi', '*', 'nome.asc')
             ]);
-            this.computadores = compRes.ok ? await compRes.json() : [];
-            this.monitores = monRes.ok ? await monRes.json() : [];
+            this.computadores = computadores;
+            this.monitores = monitores;
         } catch (err) {
             console.error('Erro ao buscar equipamentos:', err);
-            this.computadores = [];
-            this.monitores = [];
+            this.computadores = this.computadores || [];
+            this.monitores = this.monitores || [];
         }
 
         // Populate entidade filter with all unique values from both tables
@@ -942,6 +938,37 @@ class Dashboard {
         }
     }
 
+    async fetchAll(tableName, select = '*', order = 'id.desc') {
+        let allData = [];
+        let offset = 0;
+        const limit = 1000;
+        const headers = { 
+            'apikey': this.config.SUPABASE_KEY, 
+            'Authorization': `Bearer ${this.config.SUPABASE_KEY}` 
+        };
+
+        console.log(`Fetching all records from ${tableName}...`);
+
+        while (true) {
+            const url = `${this.config.SUPABASE_URL}/rest/v1/${tableName}?select=${select}&order=${order}&limit=${limit}&offset=${offset}`;
+            const response = await fetch(url, { headers });
+
+            if (!response.ok) {
+                console.error(`Error fetching ${tableName}:`, response.status, response.statusText);
+                throw new Error(`Falha ao buscar dados de ${tableName}`);
+            }
+
+            const data = await response.json();
+            allData = allData.concat(data);
+
+            if (data.length < limit) break;
+            offset += limit;
+        }
+        
+        console.log(`Total ${tableName} fetched: ${allData.length}`);
+        return allData;
+    }
+
     async fetchData() {
         const statusText = document.getElementById('status-text');
         const statusDot = document.querySelector('.status-dot');
@@ -949,40 +976,9 @@ class Dashboard {
         try {
             statusText.innerText = 'Sincronizando...';
             statusDot.className = 'status-dot';
-            console.log('Fetching data from:', this.config.SUPABASE_URL);
-            console.log('Table name:', this.config.TABLE_NAME);
-
-            // Fetch all from Supabase via PostgREST using pagination to bypass 1000 limit
-            let allData = [];
-            let offset = 0;
-            const limit = 1000;
-
-            while (true) {
-                const response = await fetch(`${this.config.SUPABASE_URL}/rest/v1/${this.config.TABLE_NAME}?select=*&order=id.desc&limit=${limit}&offset=${offset}`, {
-                    headers: {
-                        'apikey': this.config.SUPABASE_KEY,
-                        'Authorization': `Bearer ${this.config.SUPABASE_KEY}`
-                    }
-                });
-
-                if (!response.ok) {
-                    console.error('Response not OK:', response.status, response.statusText);
-                    const errorText = await response.text();
-                    console.error('Error details:', errorText);
-                    throw new Error('Falha ao buscar dados do Supabase');
-                }
-
-                const data = await response.json();
-                console.log(`Fetched ${data.length} records in this batch.`);
-                allData = allData.concat(data);
-
-                if (data.length < limit) break; // Finished loading
-                offset += limit;
-            }
-
-            console.log('Total tickets fetched:', allData.length);
-
-            this.tickets = allData;
+            
+            // Fetch all from Supabase via helper
+            this.tickets = await this.fetchAll(this.config.TABLE_NAME, '*', 'id.desc');
             this.filteredTickets = [...this.tickets];
             this.cloudTickets = [...this.tickets];
 
