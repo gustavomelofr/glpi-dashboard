@@ -652,19 +652,24 @@ class Dashboard {
         grid.innerHTML = '';
 
         const monthlyData = {};
-        this.filteredTickets.forEach(ticket => {
-            const dateStr = ticket.data_atualizacao || ticket.inserido_em;
+        this.tickets.forEach(ticket => {
+            // Filtrar apenas chamados com status 'Fechado' para o relatório mensal
+            const isClosed = ticket.status === 'Fechado';
+            if (!isClosed) return;
+
+            const dateStr = ticket.data_atualizacao;
             if (!dateStr) return;
 
             const parts = dateStr.split(' ');
             const dateParts = parts[0].split('-');
             if (dateParts.length !== 3) return;
 
-            const day = dateParts[0];
-            const month = dateParts[1];
-            const yearVal = dateParts[2];
-
-            const d = new Date(`${yearVal}-${month}-${day}`);
+            const day = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]);
+            const yearVal = parseInt(dateParts[2]);
+            
+            // Usar construtor numérico para evitar problemas de fuso horário com strings ISO
+            const d = new Date(yearVal, month - 1, day);
             if (isNaN(d.getTime())) return;
 
             const monthName = d.toLocaleDateString('pt-BR', { month: 'long' });
@@ -761,10 +766,16 @@ class Dashboard {
                         <h2 style="font-size: 1.8rem; margin: 0;">${data.label}</h2>
                     </div>
                 </div>
-                <button onclick="dashboard.downloadPDF('${monthKey}')" class="glass-card" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    <i data-lucide="file-down"></i>
-                    Baixar PDF
-                </button>
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="dashboard.downloadExcel('${monthKey}')" class="glass-card" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <i data-lucide="file-spreadsheet"></i>
+                        Baixar Excel
+                    </button>
+                    <button onclick="dashboard.downloadPDF('${monthKey}')" class="glass-card" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <i data-lucide="file-down"></i>
+                        Baixar PDF
+                    </button>
+                </div>
             </div>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
                 <div>
@@ -810,7 +821,7 @@ class Dashboard {
                         <span style="font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px;" title="${ticket.titulo}">${ticket.titulo || 'Sem título'}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: var(--text-muted);">
-                        <span><i data-lucide="user" style="width: 12px; display: inline; margin-right: 4px;"></i>${ticket.requerente || 'N/A'}</span>
+                        <span><i data-lucide="tag" style="width: 12px; display: inline; margin-right: 4px;"></i>${ticket.categoria || 'N/A'}</span>
                         <span><i data-lucide="map-pin" style="width: 12px; display: inline; margin-right: 4px;"></i>${ticket.entidade || 'N/A'}</span>
                     </div>
                 </div>
@@ -874,7 +885,7 @@ class Dashboard {
         const tableRows = data.tickets.map(t => [
             `#${t.id}`,
             t.titulo || 'Sem título',
-            t.requerente || 'N/A',
+            t.categoria || 'N/A',
             t.entidade || 'N/A',
             t.prioridade || 'Média',
             t.status || 'Novo',
@@ -883,7 +894,7 @@ class Dashboard {
 
         doc.autoTable({
             startY: 80,
-            head: [['ID', 'Título', 'Requerente', 'Entidade', 'Prioridade', 'Status', 'Custo']],
+            head: [['ID', 'Título', 'Categoria', 'Entidade', 'Prioridade', 'Status', 'Custo']],
             body: tableRows,
             headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
             alternateRowStyles: { fillColor: [250, 250, 250] },
@@ -907,6 +918,45 @@ class Dashboard {
         }
 
         doc.save(`Relatorio_Chamados_${data.label.replace(' ', '_')}.pdf`);
+    }
+
+    downloadExcel(monthKey) {
+        const data = this.monthlyData[monthKey];
+        if (!data) return;
+
+        const results = data.tickets.map(t => ({
+            'ID': t.id,
+            'Título': t.titulo || 'Sem título',
+            'Categoria': t.categoria || 'N/A',
+            'Entidade': t.entidade || 'N/A',
+            'Prioridade': t.prioridade || 'Média',
+            'Status': t.status || 'Novo',
+            'Técnico': t.tecnico || '-',
+            'Grupo': t.grupo || '-',
+            'Data': t.data_atualizacao || '-',
+            'Custo': parseFloat(t.custo_fixo) || 0
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(results);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Chamados");
+
+        // Largura das colunas
+        const colWidths = [
+            { wch: 15 }, // ID
+            { wch: 40 }, // Título
+            { wch: 30 }, // Categoria
+            { wch: 30 }, // Entidade
+            { wch: 15 }, // Prioridade
+            { wch: 15 }, // Status
+            { wch: 20 }, // Técnico
+            { wch: 20 }, // Grupo
+            { wch: 20 }, // Data
+            { wch: 12 }  // Custo
+        ];
+        worksheet['!cols'] = colWidths;
+
+        XLSX.writeFile(workbook, `Relatorio_Chamados_${data.label.replace(' ', '_')}.xlsx`);
     }
 
     toggleTheme() {
@@ -1053,9 +1103,10 @@ class Dashboard {
             rowShort.innerHTML = `
                 <td>#${ticket.id}</td>
                 <td title="${ticket.titulo}"><strong>${ticket.titulo?.substring(0, 35)}${ticket.titulo?.length > 35 ? '...' : ''}</strong></td>
-                <td>${ticket.requerente || 'N/A'}</td>
+                <td title="${ticket.categoria}"><strong>${ticket.categoria?.substring(0, 35)}${ticket.categoria?.length > 35 ? '...' : ''}</strong></td>
                 <td class="${prioClass}">${ticket.prioridade || 'Média'}</td>
                 <td><span class="status-badge ${statusClass}">${ticket.status}</span></td>
+                <td>${ticket.data_atualizacao || '-'}</td>
             `;
             tableBody.appendChild(rowShort);
 
@@ -1064,12 +1115,13 @@ class Dashboard {
             rowFull.innerHTML = `
                 <td>#${ticket.id}</td>
                 <td><strong>${ticket.titulo}</strong></td>
-                <td>${ticket.requerente || 'N/A'}</td>
+                <td title="${ticket.categoria}">${ticket.categoria || 'N/A'}</td>
                 <td>${ticket.tecnico || '-'}</td>
                 <td>${ticket.grupo || '-'}</td>
                 <td>${ticket.entidade || '-'}</td>
                 <td class="${prioClass}">${ticket.prioridade || 'Média'}</td>
                 <td><span class="status-badge ${statusClass}">${ticket.status}</span></td>
+                <td>${ticket.data_atualizacao || '-'}</td>
             `;
             tableBodyFull.appendChild(rowFull);
         });
@@ -1757,10 +1809,12 @@ class Dashboard {
         const tecnicos = [...new Set(this.tickets.map(t => t.tecnico).filter(Boolean))].sort();
         const grupos = [...new Set(this.tickets.map(t => t.grupo).filter(Boolean))].sort();
         const unidades = [...new Set(this.tickets.map(t => t.entidade).filter(Boolean))].sort();
+        const statuses = [...new Set(this.tickets.map(t => t.status).filter(Boolean))].sort();
 
         this.updateSelect('filter-tecnico', tecnicos, 'Todos os Técnicos');
         this.updateSelect('filter-grupo', grupos, 'Todos os Grupos');
         this.updateSelect('filter-localidade', unidades, 'Todas as Localidades');
+        this.updateSelect('filter-status', statuses, 'Todos os Status');
     }
 
     updateSelect(id, values, defaultText) {
@@ -1775,6 +1829,7 @@ class Dashboard {
         document.getElementById('filter-tecnico').value = '';
         document.getElementById('filter-grupo').value = '';
         document.getElementById('filter-localidade').value = '';
+        document.getElementById('filter-status').value = '';
         document.getElementById('filter-data-inicio').value = '';
         document.getElementById('filter-data-fim').value = '';
         this.filterTickets();
@@ -1789,6 +1844,7 @@ class Dashboard {
         const tecnico = document.getElementById('filter-tecnico').value;
         const grupo = document.getElementById('filter-grupo').value;
         const localidade = document.getElementById('filter-localidade').value;
+        const status = document.getElementById('filter-status').value;
         const dataInicio = document.getElementById('filter-data-inicio').value;
         const dataFim = document.getElementById('filter-data-fim').value;
 
@@ -1804,12 +1860,13 @@ class Dashboard {
 
         this.tickets.forEach(t => {
             const matchesSearch = !query ||
-                (t.titulo && t.titulo.toLowerCase().includes(query)) ||
+                (t.categoria && t.categoria.toLowerCase().includes(query)) ||
                 (t.requerente && t.requerente.toLowerCase().includes(query));
 
             const matchesTecnico = !tecnico || t.tecnico === tecnico;
             const matchesGrupo = !grupo || t.grupo === grupo;
             const matchesLocalidade = !localidade || t.entidade === localidade;
+            const matchesStatus = !status || t.status === status;
 
             // Date filtering (Manual parsing for DD-MM-YYYY)
             let matchesDate = true;
@@ -1832,7 +1889,7 @@ class Dashboard {
                 matchesDate = false;
             }
 
-            const matchesDropdowns = matchesTecnico && matchesGrupo && matchesLocalidade && matchesDate;
+            const matchesDropdowns = matchesTecnico && matchesGrupo && matchesLocalidade && matchesStatus && matchesDate;
 
             if (matchesDropdowns && matchesSearch) {
                 this.filteredTickets.push(t);

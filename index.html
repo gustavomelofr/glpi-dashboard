@@ -28,6 +28,8 @@
     <!-- jsPDF & AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- SheetJS (XLSX) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -178,6 +180,11 @@
                 <div class="filter-group">
                     <select id="filter-localidade" class="filter-select">
                         <option value="">Localidade</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="filter-status" class="filter-select">
+                        <option value="">Status</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -351,9 +358,10 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Título</th>
-                                        <th>Requerente</th>
+                                        <th>Categoria</th>
                                         <th>Prioridade</th>
                                         <th>Status</th>
+                                        <th>Últ. Atualização</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tickets-table-body">
@@ -414,12 +422,13 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Título</th>
-                                    <th>Requerente</th>
+                                    <th>Categoria</th>
                                     <th style="width: 120px;">Técnico</th>
                                     <th style="width: 120px;">Grupo</th>
                                     <th style="width: 150px;">Localidade</th>
                                     <th>Prioridade</th>
                                     <th>Status</th>
+                                    <th>Últ. Atualização</th>
                                 </tr>
                             </thead>
                             <tbody id="tickets-table-body-full">
