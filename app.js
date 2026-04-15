@@ -1143,7 +1143,16 @@ class Dashboard {
         // Group tickets by group
         const groups = {};
         this.filteredTickets.forEach(t => {
-            const gName = t.grupo || 'Sem Grupo';
+            let gName = t.grupo || 'Sem Grupo';
+            
+            // Consolidate Level 2 and Level 3
+            const upperG = gName.toUpperCase();
+            if (upperG.includes('NIVEL 2') || upperG.includes('NÍVEL 2')) {
+                gName = 'Nível 2 (Consolidado)';
+            } else if (upperG.includes('NIVEL 3') || upperG.includes('NÍVEL 3')) {
+                gName = 'Nível 3 (Consolidado)';
+            }
+
             if (!groups[gName]) {
                 groups[gName] = { name: gName, total: 0, open: 0, closed: 0 };
             }
@@ -1948,7 +1957,22 @@ class Dashboard {
 
     populateFilters() {
         const tecnicos = [...new Set(this.tickets.map(t => t.tecnico).filter(Boolean))].sort();
-        const grupos = [...new Set(this.tickets.map(t => t.grupo).filter(Boolean))].sort();
+        
+        // Consolidate groups for the filter dropdown
+        const rawGroups = [...new Set(this.tickets.map(t => t.grupo).filter(Boolean))];
+        const consolidatedGroups = new Set();
+        rawGroups.forEach(g => {
+            const upper = g.toUpperCase();
+            if (upper.includes('NIVEL 2') || upper.includes('NÍVEL 2')) {
+                consolidatedGroups.add('Nível 2 (Consolidado)');
+            } else if (upper.includes('NIVEL 3') || upper.includes('NÍVEL 3')) {
+                consolidatedGroups.add('Nível 3 (Consolidado)');
+            } else {
+                consolidatedGroups.add(g);
+            }
+        });
+        const grupos = [...consolidatedGroups].sort();
+
         const unidades = [...new Set(this.tickets.map(t => t.entidade).filter(Boolean))].sort();
         const statuses = [...new Set(this.tickets.map(t => t.status).filter(Boolean))].sort();
 
@@ -2005,7 +2029,21 @@ class Dashboard {
                 (t.requerente && t.requerente.toLowerCase().includes(query));
 
             const matchesTecnico = !tecnico || t.tecnico === tecnico;
-            const matchesGrupo = !grupo || t.grupo === grupo;
+            
+            let matchesGrupo = false;
+            if (!grupo) {
+                matchesGrupo = true;
+            } else {
+                const upperT = (t.grupo || '').toUpperCase();
+                if (grupo === 'Nível 2 (Consolidado)') {
+                    matchesGrupo = upperT.includes('NIVEL 2') || upperT.includes('NÍVEL 2');
+                } else if (grupo === 'Nível 3 (Consolidado)') {
+                    matchesGrupo = upperT.includes('NIVEL 3') || upperT.includes('NÍVEL 3');
+                } else {
+                    matchesGrupo = t.grupo === grupo;
+                }
+            }
+
             const matchesLocalidade = !localidade || t.entidade === localidade;
             const matchesStatus = !status || t.status === status;
 
