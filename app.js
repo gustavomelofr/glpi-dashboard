@@ -1210,9 +1210,21 @@ class Dashboard {
         rankingContainer.innerHTML = '';
 
         // Group tickets by technician
+        const excludedTechs = [
+            "Luciana Torrezan",
+            "Elton Santos Batista",
+            "Francisco Stanley Hicardo de Oliveira Farias",
+            "Débora Lima Jardim Franco",
+            "Weverton dos Santos Luciano",
+            "Andrezza Barbosa",
+            "Andre Rangel Fernandes"
+        ];
+
         const techs = {};
         this.filteredTickets.forEach(t => {
             const tName = t.tecnico || 'Sem Atribuição';
+            if (excludedTechs.includes(tName)) return;
+
             if (!techs[tName]) {
                 techs[tName] = { name: tName, total: 0, open: 0, closed: 0 };
             }
