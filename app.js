@@ -135,6 +135,7 @@ class Dashboard {
         addListener('nav-reports', 'click', (e) => { e.preventDefault(); this.switchView('reports'); this.closeSidebar(); });
         addListener('nav-finance', 'click', (e) => { e.preventDefault(); this.switchView('finance'); this.closeSidebar(); });
         addListener('nav-equipamentos', 'click', (e) => { e.preventDefault(); this.switchView('equipamentos'); this.closeSidebar(); });
+        addListener('nav-tecnicos', 'click', (e) => { e.preventDefault(); this.switchView('tecnicos'); this.closeSidebar(); });
 
         // Mobile Sidebar Toggle
         const mobileBtn = document.getElementById('mobile-menu-btn');
@@ -183,8 +184,8 @@ class Dashboard {
 
     switchView(view) {
         this.currentView = view;
-        const views = ['dashboard-view', 'tickets-view', 'teams-view', 'reports-view', 'finance-view', 'equipamentos-view'];
-        const navs = ['nav-dashboard', 'nav-tickets', 'nav-teams', 'nav-reports', 'nav-finance', 'nav-equipamentos'];
+        const views = ['dashboard-view', 'tickets-view', 'teams-view', 'tecnicos-view', 'reports-view', 'finance-view', 'equipamentos-view'];
+        const navs = ['nav-dashboard', 'nav-tickets', 'nav-teams', 'nav-tecnicos', 'nav-reports', 'nav-finance', 'nav-equipamentos'];
         views.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         navs.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
 
@@ -207,6 +208,11 @@ class Dashboard {
             document.getElementById('nav-teams').classList.add('active');
             viewTitle.innerText = 'Times';
             this.renderTeams();
+        } else if (view === 'tecnicos') {
+            document.getElementById('tecnicos-view').style.display = 'block';
+            document.getElementById('nav-tecnicos').classList.add('active');
+            viewTitle.innerText = 'Técnicos';
+            this.renderTecnicos();
         } else if (view === 'reports') {
             document.getElementById('reports-view').style.display = 'block';
             document.getElementById('nav-reports').classList.add('active');
@@ -1196,6 +1202,129 @@ class Dashboard {
         lucide.createIcons({ props: { size: 18 }, nameAttr: 'data-lucide' });
     }
 
+    renderTecnicos() {
+        const container = document.getElementById('tecnicos-container');
+        const rankingContainer = document.getElementById('tecnicos-ranking');
+        if (!container || !rankingContainer) return;
+        container.innerHTML = '';
+        rankingContainer.innerHTML = '';
+
+        // Group tickets by technician
+        const techs = {};
+        this.filteredTickets.forEach(t => {
+            const tName = t.tecnico || 'Sem Atribuição';
+            if (!techs[tName]) {
+                techs[tName] = { name: tName, total: 0, open: 0, closed: 0 };
+            }
+            techs[tName].total++;
+            if (t.status === 'Fechado' || t.status === 'Solucionado') {
+                techs[tName].closed++;
+            } else {
+                techs[tName].open++;
+            }
+        });
+
+        // Convert to array and sort by closed (performance)
+        const sortedTechs = Object.values(techs).sort((a, b) => b.closed - a.closed || b.total - a.total);
+
+        // Render Ranking (Top 3)
+        if (sortedTechs.length > 0) {
+            const rankingHeader = document.createElement('div');
+            rankingHeader.className = 'chart-header';
+            rankingHeader.style.marginBottom = '20px';
+            rankingHeader.innerHTML = `
+                <h3>🏆 Produtividade Técnica</h3>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Ranking por chamados solucionados</div>
+            `;
+            rankingContainer.appendChild(rankingHeader);
+
+            const podium = document.createElement('div');
+            podium.style.display = 'flex';
+            podium.style.gap = '16px';
+            podium.style.marginBottom = '24px';
+            podium.style.flexWrap = 'wrap';
+
+            sortedTechs.slice(0, 3).forEach((tech, index) => {
+                const medalColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
+                const initials = tech.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                
+                const card = document.createElement('div');
+                card.className = 'glass-card';
+                card.style.flex = '1';
+                card.style.minWidth = '240px';
+                card.style.borderLeft = `4px solid ${medalColors[index]}`;
+                card.style.display = 'flex';
+                card.style.alignItems = 'center';
+                card.style.gap = '16px';
+                card.style.padding = '20px';
+                card.style.position = 'relative';
+                card.style.overflow = 'hidden';
+                
+                card.innerHTML = `
+                    <div style="position: absolute; right: -10px; top: -10px; font-size: 4rem; font-weight: 900; color: rgba(255,255,255,0.03); z-index: 0;">#${index + 1}</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: ${medalColors[index]}; min-width: 45px; z-index: 1;">#${index + 1}</div>
+                    <div style="flex: 1; z-index: 1;">
+                        <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main); margin-bottom: 2px;">${tech.name}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">${tech.closed} resolvidos</div>
+                    </div>
+                    <div class="icon-circle" style="background: ${medalColors[index]}20; color: ${medalColors[index]}; width: 40px; height: 40px; min-width: 40px; z-index: 1;">
+                        <i data-lucide="award"></i>
+                    </div>
+                `;
+                podium.appendChild(card);
+            });
+            rankingContainer.appendChild(podium);
+        }
+
+        // Render Grid
+        sortedTechs.forEach(tech => {
+            const card = document.createElement('div');
+            card.className = 'team-card glass-card';
+
+            const openPercent = tech.total > 0 ? (tech.open / tech.total * 100).toFixed(0) : 0;
+            const closedPercent = tech.total > 0 ? (tech.closed / tech.total * 100).toFixed(0) : 0;
+
+            card.innerHTML = `
+                <div class="team-card-header">
+                    <div class="team-icon">
+                        <i data-lucide="user-cog"></i>
+                    </div>
+                    <div class="team-info">
+                        <h3>${tech.name}</h3>
+                        <span>${tech.total} Chamados Totais</span>
+                    </div>
+                </div>
+                <div class="team-stats">
+                    <div class="team-stat-item">
+                        <span class="label">Abertos <span>${tech.open}</span></span>
+                        <div class="progress-bar"><div class="progress" style="width: ${openPercent}%; background: #ef4444;"></div></div>
+                    </div>
+                    <div class="team-stat-item">
+                        <span class="label">Fechados <span>${tech.closed}</span></span>
+                        <div class="progress-bar"><div class="progress" style="width: ${closedPercent}%; background: #10b981;"></div></div>
+                    </div>
+                </div>
+                <div style="margin-top: 16px;">
+                    <button class="btn-premium" style="width: 100%; justify-content: center;" onclick="dashboard.filterByTech('${tech.name}')">
+                        Ver Atividades
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    filterByTech(techName) {
+        const filterEl = document.getElementById('filter-tecnico');
+        if (filterEl) {
+            filterEl.value = (techName === 'Sem Atribuição' || techName === 'Sem Técnico') ? '' : techName;
+        }
+        this.filterTickets();
+        this.switchView('tickets');
+    }
+
     filterByGroup(groupName) {
         document.getElementById('filter-grupo').value = groupName === 'Sem Grupo' ? '' : groupName;
         this.filterTickets();
@@ -1906,6 +2035,8 @@ class Dashboard {
             this.renderTable();
         } else if (this.currentView === 'teams') {
             this.renderTeams();
+        } else if (this.currentView === 'tecnicos') {
+            this.renderTecnicos();
         } else if (this.currentView === 'finance') {
             this.renderFinance();
         }
